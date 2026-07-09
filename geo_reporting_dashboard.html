@@ -1331,12 +1331,91 @@ table.data-table tr:last-child td{border-bottom:none;}
 
 <script>
 const charts = {};
+
+function getActivePropertyPrompts(prop) {
+  const brand = getBrandNameFromProperty(prop);
+  const seed = getPropertySeed(prop);
+  const cachedPrompts = getApiCache(prop, 'gsc_prompts') || getApiCache(prop, 'bing_prompts');
+  
+  if (cachedPrompts && cachedPrompts.length > 0) return cachedPrompts;
+  
+  let list = [];
+  if (prop.toLowerCase().includes("betterrhodes")) {
+    list = [
+      { query: "popular non alcoholic drinks FIFA World Cup 2026 viewing parties", impressions: 879, clicks: 536, position: 1.0 },
+      { query: "most popular non alcoholic drinks FIFA World Cup 2026", impressions: 551, clicks: 207, position: 1.2 },
+      { query: "non alcoholic drinks FIFA World Cup 2026 watching parties", impressions: 407, clicks: 211, position: 1.0 },
+      { query: "best non alcoholic drinks FIFA World Cup 2026", impressions: 375, clicks: 239, position: 1.0 },
+      { query: "non alcoholic drinks popular FIFA World Cup 2026", impressions: 323, clicks: 164, position: 1.3 },
+      { query: "non alcoholic drinks FIFA World Cup 2026 hosts", impressions: 318, clicks: 194, position: 1.1 },
+      { query: "non alcoholic drinks FIFA World Cup 2026", impressions: 285, clicks: 74, position: 2.0 },
+      { query: "trending non alcoholic beverages FIFA World Cup 2026", impressions: 267, clicks: 156, position: 1.2 }
+    ];
+  } else {
+    list = [
+      { query: "best project management software for remote teams", impressions: 880, clicks: 45, position: 2.0 },
+      { query: "top CRM alternatives to Salesforce", impressions: 720, clicks: 35, position: 3.0 },
+      { query: "how to manage remote team tasks", impressions: 1200, clicks: 75, position: 1.0 },
+      { query: `is ${brand} good for small business`, impressions: 310, clicks: 15, position: 1.0 },
+      { query: "project management tools with AI features", impressions: 590, clicks: 28, position: 2.0 },
+      { query: "affordable alternatives to Asana", impressions: 460, clicks: 22, position: 4.0 }
+    ];
+    list = list.map(p => ({
+      query: p.query,
+      impressions: p.impressions * seed,
+      clicks: p.clicks * seed,
+      position: Math.max(1, Math.min(5, Math.round((p.position + (seed - 1) * -1.5) * 10) / 10))
+    }));
+  }
+  return list;
+}
+
+function getActivePropertyPages(prop) {
+  const brand = getBrandNameFromProperty(prop);
+  const seed = getPropertySeed(prop);
+  const cachedPages = getApiCache(prop, 'gsc_pages');
+  
+  if (cachedPages && cachedPages.length > 0) return cachedPages;
+  
+  let list = [];
+  if (prop.toLowerCase().includes("betterrhodes")) {
+    list = [
+      { page: "https://www.betterrhodes.com/blogs/all-together/world-cup-2026-watch-party-a-guide-to-non-alcoholic-summer-refreshments", clicks: 3200 },
+      { page: "https://www.betterrhodes.com/blogs/all-together/your-guide-to-0-0-beer-the-completely-alcohol-free-options", clicks: 2600 },
+      { page: "https://www.betterrhodes.com/blogs/all-together/from-kickoff-to-final-whistle-non-alcoholic-drinks-for-the-2026-world-cup", clicks: 2500 },
+      { page: "https://www.betterrhodes.com/blogs/all-together/what-to-stock-non-alcoholic-beer-cooler-world-cup-2026", clicks: 1300 },
+      { page: "https://www.betterrhodes.com/blogs/all-together/10-brilliant-benefits-of-non-alcoholic-beer", clicks: 465 },
+      { page: "https://www.betterrhodes.com/blogs/all-together/the-premium-non-alcoholic-drinks-brands-worth-buying-in-2026", clicks: 397 },
+      { page: "https://www.betterrhodes.com/blogs/all-together/do-botanical-drinks-actually-work-a-deep-dive-into-hiyo-functional-beverage", clicks: 376 },
+      { page: "https://www.betterrhodes.com/", clicks: 253 },
+      { page: "https://www.betterrhodes.com/blogs/all-together/how-to-distill-non-alcoholic-spirits", clicks: 211 }
+    ];
+  } else {
+    list = [
+      { page: "/blog/best-project-management-software-2026", clicks: 42 },
+      { page: `/compare/${brand.toLowerCase()}-vs-asana`, clicks: 31 },
+      { page: "/features/ai-task-automation", clicks: 27 },
+      { page: "/guides/remote-team-management", clicks: 24 },
+      { page: "/pricing", clicks: 18 },
+      { page: "/blog/small-business-pm-tools", clicks: 15 }
+    ];
+    list = list.map(p => ({
+      page: p.page,
+      clicks: Math.round(p.clicks * seed)
+    }));
+  }
+  return list;
+}
+
 function showPage(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   document.querySelector(`.nav-btn[data-page="${id}"]`).classList.add('active');
   initCharts(id);
+  const prop = document.getElementById('meta-property').value;
+  const seed = getPropertySeed(prop);
+  updateChartsForProperty(seed);
 }
 
 function baseOpts(extra){
@@ -1376,24 +1455,36 @@ function initCharts(id){
     charts.engineDonut.update();
   }
   if(id==='prompts' && !charts.promptsBar){
+    const activePrompts = getActivePropertyPrompts(prop);
+    const labels = activePrompts.map(p => p.query.length > 30 ? p.query.substring(0, 27) + '...' : p.query);
+    const dataVals = activePrompts.map(p => p.impressions || p.clicks);
+    
     charts.promptsBar = new Chart(document.getElementById('chartPromptsBar'),{
       type:'bar',
-      data:{labels:['remote PM software','manage remote tasks','AI PM features','CRM vs Salesforce','alt. to Asana','Client Co. review'],
-        datasets:[{label:'Citations',data:[58,51,44,37,29,22],backgroundColor:'#5B4FE0',borderRadius:6,maxBarThickness:34}]},
+      data:{
+        labels: labels,
+        datasets:[{label:'Citations',data:dataVals,backgroundColor:'#5B4FE0',borderRadius:6,maxBarThickness:34}]
+      },
       options:baseOpts({plugins:{legend:{display:false}}})
     });
-    charts.promptsBar.originalData = [58,51,44,37,29,22];
+    charts.promptsBar.originalData = dataVals;
     charts.promptsBar.data.datasets[0].data = charts.promptsBar.originalData.map(v => Math.round(v * seed));
     charts.promptsBar.update();
   }
   if(id==='pages' && !charts.pagesBar){
+    const activePages = getActivePropertyPages(prop);
+    const labels = activePages.map(p => p.page.replace(/^https?:\/\/[^\/]+/, ''));
+    const dataVals = activePages.map(p => p.clicks);
+    
     charts.pagesBar = new Chart(document.getElementById('chartPagesBar'),{
       type:'bar',
-      data:{labels:['/best-pm-software-2026','/clientco-vs-asana','/ai-task-automation','/remote-team-mgmt','/pricing','/small-business-pm'],
-        datasets:[{label:'Citations',data:[42,31,27,24,18,15],backgroundColor:'#00AEC0',borderRadius:6,maxBarThickness:34}]},
+      data:{
+        labels: labels,
+        datasets:[{label:'Citations',data:dataVals,backgroundColor:'#00AEC0',borderRadius:6,maxBarThickness:34}]
+      },
       options:baseOpts({plugins:{legend:{display:false}},indexAxis:'y'})
     });
-    charts.pagesBar.originalData = [42,31,27,24,18,15];
+    charts.pagesBar.originalData = dataVals;
     charts.pagesBar.data.datasets[0].data = charts.pagesBar.originalData.map(v => Math.round(v * seed));
     charts.pagesBar.update();
   }
