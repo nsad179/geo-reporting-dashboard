@@ -1507,24 +1507,110 @@ function triggerFilterAnimation(callback) {
 function applyPropertyData() {
   const prop = document.getElementById('meta-property').value;
   const seed = getPropertySeed(prop);
+
+  // Check GSC/Bing Cache
+  const cachedPrompts = getApiCache(prop, 'gsc_prompts') || getApiCache(prop, 'bing_prompts');
+  const cachedPages = getApiCache(prop, 'gsc_pages');
+  const cachedAhrefs = getApiCache(prop, 'ahrefs');
+
+  // 1. Calculate KPI totals
+  let promptsCount = Math.round(86 * seed);
+  let aiCitations = Math.round(312 * seed);
+  let brandMentions = Math.round(214 * seed);
+  let avgCitationRank = (2.3 + (seed - 1) * -0.5).toFixed(1);
+
+  if (cachedPrompts && cachedPrompts.length > 0) {
+    promptsCount = cachedPrompts.length;
+    // Total clicks/impressions can drive mentions if available
+    const totalClicks = cachedPrompts.reduce((sum, p) => sum + (p.clicks || 0), 0);
+    if (totalClicks > 0) {
+      brandMentions = totalClicks;
+    }
+  }
+  if (cachedPages && cachedPages.length > 0) {
+    const totalPageClicks = cachedPages.reduce((sum, p) => sum + (p.clicks || 0), 0);
+    if (totalPageClicks > 0) {
+      aiCitations = totalPageClicks;
+    }
+  }
+  if (cachedAhrefs) {
+    brandMentions = cachedAhrefs.backlinks || brandMentions;
+  }
+
+  // 2. Render KPI cards
   document.querySelectorAll('.kpi').forEach(kpi => {
     const label = kpi.querySelector('.label').innerText.trim().toLowerCase();
     const valDiv = kpi.querySelector('.value');
     if (label === 'prompts tracked') {
-      valDiv.innerText = Math.round(86 * seed);
+      valDiv.innerText = promptsCount;
     } else if (label === 'ai citations') {
-      valDiv.innerText = Math.round(312 * seed);
+      valDiv.innerText = aiCitations;
     } else if (label === 'brand mentions') {
-      valDiv.innerText = Math.round(214 * seed);
+      valDiv.innerText = brandMentions;
     } else if (label === 'share of voice') {
       valDiv.innerText = Math.round(24 * seed) + '%';
     } else if (label === 'citations this month') {
-      valDiv.innerText = Math.round(312 * seed);
+      valDiv.innerText = aiCitations;
     } else if (label === 'mentions this month') {
-      valDiv.innerText = Math.round(214 * seed);
+      valDiv.innerText = brandMentions;
+    } else if (label === 'avg. citation rank') {
+      valDiv.innerText = avgCitationRank;
     }
   });
-  updateTablesForProperty(seed);
+
+  // 3. Overwrite Prompts Table (Page 3)
+  const promptsTbody = document.querySelector('#prompts table.data-table tbody');
+  if (promptsTbody && cachedPrompts && cachedPrompts.length > 0) {
+    promptsTbody.innerHTML = '';
+    cachedPrompts.forEach(p => {
+      let cat = 'Comparison';
+      const q = p.query.toLowerCase();
+      if (q.includes('vs') || q.includes('alternative')) cat = 'Competitive';
+      else if (q.includes('how') || q.includes('manage')) cat = 'How-to';
+      else if (q.includes('client') || q.includes('brand')) cat = 'Branded';
+      else if (q.includes('tool') || q.includes('feature')) cat = 'Feature';
+      
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>"${p.query}"</td>
+        <td><span class="tag">${cat}</span></td>
+        <td class="mono-num">${Math.round(p.impressions).toLocaleString()}</td>
+        <td class="col-engines"><span class="engine-chip eng-chatgpt">ChatGPT</span></td>
+        <td class="mono-num">${parseFloat(p.position).toFixed(1)}</td>
+        <td class="trend up">▲</td>
+      `;
+      promptsTbody.appendChild(tr);
+    });
+  } else if (promptsTbody) {
+    updateTablesForProperty(seed);
+  }
+
+  // 4. Overwrite Pages Cited Table (Page 4)
+  const pagesTbody = document.querySelector('#pages table.data-table tbody');
+  if (pagesTbody && cachedPages && cachedPages.length > 0) {
+    pagesTbody.innerHTML = '';
+    cachedPages.forEach(p => {
+      let cat = 'Comparison';
+      const path = p.page.toLowerCase();
+      if (path.includes('compare') || path.includes('vs')) cat = 'Competitive';
+      else if (path.includes('features')) cat = 'Feature';
+      else if (path.includes('guides') || path.includes('blog')) cat = 'How-to';
+      else if (path.includes('pricing')) cat = 'Branded';
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${p.page}</td>
+        <td><span class="tag">${cat}</span></td>
+        <td class="mono-num">${Math.round(p.clicks).toLocaleString()}</td>
+        <td class="col-engines"><span class="engine-chip eng-chatgpt">ChatGPT</span><span class="engine-chip eng-perplexity">Perplexity</span></td>
+      `;
+      pagesTbody.appendChild(tr);
+    });
+  } else if (pagesTbody && (!cachedPrompts || cachedPrompts.length === 0)) {
+    updateTablesForProperty(seed);
+  }
+
+  // 5. Update Charts
   updateChartsForProperty(seed);
 }
 
@@ -1698,6 +1784,26 @@ function logConsole(text, type = 'info') {
   consoleBox.scrollTop = consoleBox.scrollHeight;
 }
 
+function saveApiCache(property, key, value) {
+  let cache = localStorage.getItem(`geo_report_api_cache_${property}`);
+  if (cache) {
+    cache = JSON.parse(cache);
+  } else {
+    cache = {};
+  }
+  cache[key] = value;
+  localStorage.setItem(`geo_report_api_cache_${property}`, JSON.stringify(cache));
+}
+
+function getApiCache(property, key) {
+  const cache = localStorage.getItem(`geo_report_api_cache_${property}`);
+  if (cache) {
+    const parsed = JSON.parse(cache);
+    return parsed[key];
+  }
+  return null;
+}
+
 async function syncAhrefs(property, apiKey) {
   logConsole(`Ahrefs API: Fetching backlink metrics for ${property}...`, 'info');
   try {
@@ -1709,6 +1815,11 @@ async function syncAhrefs(property, apiKey) {
     if (!response.ok) throw new Error(`HTTP status ${response.status}`);
     const data = await response.json();
     logConsole(`Ahrefs API: Successfully pulled live Domain Rating and backlinks counts!`, 'success');
+    
+    saveApiCache(property, 'ahrefs', {
+      backlinks: data.backlinks || Math.round(214 * getPropertySeed(property)),
+      domainRating: data.domain_rating || Math.round(55 * getPropertySeed(property))
+    });
     return data;
   } catch (error) {
     logConsole(`Ahrefs API Error: CORS block or invalid API key. Falling back to local data.`, 'warn');
@@ -1719,8 +1830,7 @@ async function syncAhrefs(property, apiKey) {
 async function syncGSC(property, apiKey) {
   logConsole(`GSC API: Querying search traffic analytics for ${property}...`, 'info');
   try {
-    const url = `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(property)}/searchAnalytics/query`;
-    const response = await fetch(url, {
+    const resQueries = await fetch(`https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(property)}/searchAnalytics/query`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1733,10 +1843,42 @@ async function syncGSC(property, apiKey) {
         rowLimit: 10
       })
     });
-    if (!response.ok) throw new Error(`HTTP status ${response.status}`);
-    const data = await response.json();
-    logConsole(`GSC API: Successfully imported live Google Search query stats!`, 'success');
-    return data;
+    if (!resQueries.ok) throw new Error(`HTTP status ${resQueries.status}`);
+    const dataQueries = await resQueries.json();
+    const prompts = (dataQueries.rows || []).map(r => ({
+      query: r.keys[0],
+      impressions: r.impressions,
+      clicks: r.clicks,
+      position: r.position
+    }));
+    saveApiCache(property, 'gsc_prompts', prompts);
+
+    const resPages = await fetch(`https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(property)}/searchAnalytics/query`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        startDate: '2026-06-01',
+        endDate: '2026-06-30',
+        dimensions: ['page'],
+        rowLimit: 6
+      })
+    });
+    if (resPages.ok) {
+      const dataPages = await resPages.json();
+      const pages = (dataPages.rows || []).map(r => ({
+        page: r.keys[0].replace(/^https?:\/\/[^\/]+/, ''),
+        impressions: r.impressions,
+        clicks: r.clicks,
+        position: r.position
+      }));
+      saveApiCache(property, 'gsc_pages', pages);
+    }
+
+    logConsole(`GSC API: Successfully imported live Google Search query and page stats!`, 'success');
+    return true;
   } catch (error) {
     logConsole(`GSC API Error: Auth token expired or CORS block. Falling back to local data.`, 'warn');
     return null;
@@ -1751,6 +1893,15 @@ async function syncBing(property, apiKey) {
     if (!response.ok) throw new Error(`HTTP status ${response.status}`);
     const data = await response.json();
     logConsole(`Bing API: Successfully fetched live Bing index statistics!`, 'success');
+    
+    const list = data.d || data || [];
+    const prompts = list.map(item => ({
+      query: item.Query || item.query || 'Search Query',
+      impressions: item.Impressions || item.impressions || 100,
+      clicks: item.Clicks || item.clicks || 5,
+      position: item.AvgPosition || item.position || 2.0
+    }));
+    saveApiCache(property, 'bing_prompts', prompts);
     return data;
   } catch (error) {
     logConsole(`Bing API Error: CORS restriction or invalid api key. Falling back to local data.`, 'warn');
