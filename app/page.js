@@ -711,7 +711,7 @@ export default function Home() {
   };
 
   const getCachedPagesList = () => {
-    const cache = getApiCache(activeProperty, "gsc_pages");
+    const cache = getApiCache(activeProperty, "gsc_pages") || getApiCache(activeProperty, "bing_pages");
     return (cache && cache.length > 0) ? cache : [];
   };
 
@@ -721,7 +721,7 @@ export default function Home() {
   };
 
   const getCitationsTotal = () => {
-    const cachedPages = getApiCache(activeProperty, "gsc_pages");
+    const cachedPages = getApiCache(activeProperty, "gsc_pages") || getApiCache(activeProperty, "bing_pages");
     if (cachedPages && cachedPages.length > 0) {
       return cachedPages.reduce((acc, p) => acc + (p.clicks || 0), 0);
     }

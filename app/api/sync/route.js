@@ -84,22 +84,37 @@ export async function POST(request) {
     }
     
     if (api === 'bing') {
-      const url = `https://ssl.bing.com/webmaster/api.svc/json/GetQueryStats?siteUrl=${encodeURIComponent(property)}&apikey=${key}`;
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Bing returned status ${response.status}`);
-      }
-      const data = await response.json();
-      const list = data.d || data || [];
-      const prompts = list.map(item => ({
+      // Fetch Prompts (Queries)
+      const urlQueries = `https://ssl.bing.com/webmaster/api.svc/json/GetQueryStats?siteUrl=${encodeURIComponent(property)}&apikey=${key}`;
+      const resQueries = await fetch(urlQueries);
+      if (!resQueries.ok) throw new Error(`Bing queries returned status ${resQueries.status}`);
+      const dataQueries = await resQueries.json();
+      const listQueries = dataQueries.d || dataQueries || [];
+      const prompts = listQueries.map(item => ({
         query: item.Query || item.query || 'Unknown Query',
         impressions: item.Impressions || item.impressions || 0,
         clicks: item.Clicks || item.clicks || 0,
         position: item.AvgPosition || item.position || 0
       }));
+
+      // Fetch Pages (Citations)
+      const urlPages = `https://ssl.bing.com/webmaster/api.svc/json/GetPageStats?siteUrl=${encodeURIComponent(property)}&apikey=${key}`;
+      const resPages = await fetch(urlPages);
+      let pages = [];
+      if (resPages.ok) {
+        const dataPages = await resPages.json();
+        const listPages = dataPages.d || dataPages || [];
+        pages = listPages.map(item => ({
+          page: (item.Query || item.query || item.url || item.Url || 'Unknown Page').replace(/^https?:\/\/[^\/]+/, ''),
+          impressions: item.Impressions || item.impressions || 0,
+          clicks: item.Clicks || item.clicks || 0,
+          position: item.AvgPosition || item.position || 0
+        }));
+      }
+
       return NextResponse.json({
         success: true,
-        data: { prompts }
+        data: { prompts, pages }
       });
     }
     
