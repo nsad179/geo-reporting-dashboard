@@ -1320,78 +1320,13 @@ table.data-table tr:last-child td{border-bottom:none;}
 const charts = {};
 
 function getActivePropertyPrompts(prop) {
-  const brand = getBrandNameFromProperty(prop);
-  const seed = getPropertySeed(prop);
   const cachedPrompts = getApiCache(prop, 'gsc_prompts') || getApiCache(prop, 'bing_prompts');
-  
-  if (cachedPrompts && cachedPrompts.length > 0) return cachedPrompts;
-  
-  let list = [];
-  if (prop.toLowerCase().includes("betterrhodes")) {
-    list = [
-      { query: "popular non alcoholic drinks FIFA World Cup 2026 viewing parties", impressions: 879, clicks: 536, position: 1.0 },
-      { query: "most popular non alcoholic drinks FIFA World Cup 2026", impressions: 551, clicks: 207, position: 1.2 },
-      { query: "non alcoholic drinks FIFA World Cup 2026 watching parties", impressions: 407, clicks: 211, position: 1.0 },
-      { query: "best non alcoholic drinks FIFA World Cup 2026", impressions: 375, clicks: 239, position: 1.0 },
-      { query: "non alcoholic drinks popular FIFA World Cup 2026", impressions: 323, clicks: 164, position: 1.3 },
-      { query: "non alcoholic drinks FIFA World Cup 2026 hosts", impressions: 318, clicks: 194, position: 1.1 },
-      { query: "non alcoholic drinks FIFA World Cup 2026", impressions: 285, clicks: 74, position: 2.0 },
-      { query: "trending non alcoholic beverages FIFA World Cup 2026", impressions: 267, clicks: 156, position: 1.2 }
-    ];
-  } else {
-    list = [
-      { query: "best project management software for remote teams", impressions: 880, clicks: 45, position: 2.0 },
-      { query: "top CRM alternatives to Salesforce", impressions: 720, clicks: 35, position: 3.0 },
-      { query: "how to manage remote team tasks", impressions: 1200, clicks: 75, position: 1.0 },
-      { query: `is ${brand} good for small business`, impressions: 310, clicks: 15, position: 1.0 },
-      { query: "project management tools with AI features", impressions: 590, clicks: 28, position: 2.0 },
-      { query: "affordable alternatives to Asana", impressions: 460, clicks: 22, position: 4.0 }
-    ];
-    list = list.map(p => ({
-      query: p.query,
-      impressions: p.impressions * seed,
-      clicks: p.clicks * seed,
-      position: Math.max(1, Math.min(5, Math.round((p.position + (seed - 1) * -1.5) * 10) / 10))
-    }));
-  }
-  return list;
+  return (cachedPrompts && cachedPrompts.length > 0) ? cachedPrompts : [];
 }
 
 function getActivePropertyPages(prop) {
-  const brand = getBrandNameFromProperty(prop);
-  const seed = getPropertySeed(prop);
   const cachedPages = getApiCache(prop, 'gsc_pages');
-  
-  if (cachedPages && cachedPages.length > 0) return cachedPages;
-  
-  let list = [];
-  if (prop.toLowerCase().includes("betterrhodes")) {
-    list = [
-      { page: "https://www.betterrhodes.com/blogs/all-together/world-cup-2026-watch-party-a-guide-to-non-alcoholic-summer-refreshments", clicks: 3200 },
-      { page: "https://www.betterrhodes.com/blogs/all-together/your-guide-to-0-0-beer-the-completely-alcohol-free-options", clicks: 2600 },
-      { page: "https://www.betterrhodes.com/blogs/all-together/from-kickoff-to-final-whistle-non-alcoholic-drinks-for-the-2026-world-cup", clicks: 2500 },
-      { page: "https://www.betterrhodes.com/blogs/all-together/what-to-stock-non-alcoholic-beer-cooler-world-cup-2026", clicks: 1300 },
-      { page: "https://www.betterrhodes.com/blogs/all-together/10-brilliant-benefits-of-non-alcoholic-beer", clicks: 465 },
-      { page: "https://www.betterrhodes.com/blogs/all-together/the-premium-non-alcoholic-drinks-brands-worth-buying-in-2026", clicks: 397 },
-      { page: "https://www.betterrhodes.com/blogs/all-together/do-botanical-drinks-actually-work-a-deep-dive-into-hiyo-functional-beverage", clicks: 376 },
-      { page: "https://www.betterrhodes.com/", clicks: 253 },
-      { page: "https://www.betterrhodes.com/blogs/all-together/how-to-distill-non-alcoholic-spirits", clicks: 211 }
-    ];
-  } else {
-    list = [
-      { page: "/blog/best-project-management-software-2026", clicks: 42 },
-      { page: `/compare/${brand.toLowerCase()}-vs-asana`, clicks: 31 },
-      { page: "/features/ai-task-automation", clicks: 27 },
-      { page: "/guides/remote-team-management", clicks: 24 },
-      { page: "/pricing", clicks: 18 },
-      { page: "/blog/small-business-pm-tools", clicks: 15 }
-    ];
-    list = list.map(p => ({
-      page: p.page,
-      clicks: Math.round(p.clicks * seed)
-    }));
-  }
-  return list;
+  return (cachedPages && cachedPages.length > 0) ? cachedPages : [];
 }
 
 function showPage(id){
@@ -1417,191 +1352,100 @@ function baseOpts(extra){
 }
 
 function initCharts(id){
-  const prop = document.getElementById('meta-property').value;
-  const seed = getPropertySeed(prop);
-
-  if(id==='overview' && !charts.citTrend){
-    charts.citTrend = new Chart(document.getElementById('chartCitTrend'),{
-      type:'line',
-      data:{labels:['Jan','Feb','Mar','Apr','May','Jun'],
-        datasets:[{label:'Citations',data:[142,168,190,225,264,312],borderColor:'#5B4FE0',backgroundColor:'rgba(91,79,224,.08)',tension:.35,fill:true,pointRadius:3}]},
-      options:baseOpts()
-    });
-    charts.citTrend.originalData = [142,168,190,225,264,312];
-    charts.citTrend.data.datasets[0].data = charts.citTrend.originalData.map(v => Math.round(v * seed));
-    charts.citTrend.update();
-
-    charts.engineDonut = new Chart(document.getElementById('chartEngineDonut'),{
-      type:'doughnut',
-      data:{labels:['ChatGPT','Perplexity','Google AI Overview','Copilot'],
-        datasets:[{data:[38,27,19,16],backgroundColor:['#1E9E64','#00AEC0','#B9770E','#5B4FE0'],borderWidth:0}]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{family:'Inter',size:11},color:'#666B7D',boxWidth:10}}}}
-    });
-    charts.engineDonut.originalData = [38,27,19,16];
-    charts.engineDonut.data.datasets[0].data = charts.engineDonut.originalData.map(v => Math.round(v * seed));
-    charts.engineDonut.update();
-  }
-  if(id==='prompts' && !charts.promptsBar){
-    const activePrompts = getActivePropertyPrompts(prop);
-    const labels = activePrompts.map(p => p.query.length > 30 ? p.query.substring(0, 27) + '...' : p.query);
-    const dataVals = activePrompts.map(p => p.impressions || p.clicks);
-    
-    charts.promptsBar = new Chart(document.getElementById('chartPromptsBar'),{
-      type:'bar',
-      data:{
-        labels: labels,
-        datasets:[{label:'Citations',data:dataVals,backgroundColor:'#5B4FE0',borderRadius:6,maxBarThickness:34}]
-      },
-      options:baseOpts({plugins:{legend:{display:false}}})
-    });
-    charts.promptsBar.originalData = dataVals;
-    charts.promptsBar.data.datasets[0].data = charts.promptsBar.originalData.map(v => Math.round(v * seed));
-    charts.promptsBar.update();
-  }
-  if(id==='pages' && !charts.pagesBar){
-    const activePages = getActivePropertyPages(prop);
-    const labels = activePages.map(p => p.page.replace(/^https?:\/\/[^\/]+/, ''));
-    const dataVals = activePages.map(p => p.clicks);
-    
-    charts.pagesBar = new Chart(document.getElementById('chartPagesBar'),{
-      type:'bar',
-      data:{
-        labels: labels,
-        datasets:[{label:'Citations',data:dataVals,backgroundColor:'#00AEC0',borderRadius:6,maxBarThickness:34}]
-      },
-      options:baseOpts({plugins:{legend:{display:false}},indexAxis:'y'})
-    });
-    charts.pagesBar.originalData = dataVals;
-    charts.pagesBar.data.datasets[0].data = charts.pagesBar.originalData.map(v => Math.round(v * seed));
-    charts.pagesBar.update();
-  }
-  if(id==='mentions' && !charts.mentionsLine){
-    charts.mentionsLine = new Chart(document.getElementById('chartMentionsLine'),{
-      type:'line',
-      data:{labels:['Jan','Feb','Mar','Apr','May','Jun'],
-        datasets:[{label:'Mentions',data:[110,128,145,171,196,214],borderColor:'#1E9E64',backgroundColor:'rgba(30,158,100,.08)',tension:.35,fill:true,pointRadius:3}]},
-      options:baseOpts()
-    });
-    charts.mentionsLine.originalData = [110,128,145,171,196,214];
-    charts.mentionsLine.data.datasets[0].data = charts.mentionsLine.originalData.map(v => Math.round(v * seed));
-    charts.mentionsLine.update();
-
-    charts.sentiment = new Chart(document.getElementById('chartSentiment'),{
-      type:'doughnut',
-      data:{labels:['Positive','Neutral','Negative'],
-        datasets:[{data:[72,24,4],backgroundColor:['#1E9E64','#C9CCDA','#D8483D'],borderWidth:0}]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{family:'Inter',size:11},color:'#666B7D',boxWidth:10}}}}
-    });
-    charts.sentiment.originalData = [72,24,4];
-    charts.sentiment.data.datasets[0].data = charts.sentiment.originalData.map(v => Math.round(v * seed));
-    charts.sentiment.update();
-  }
-  if(id==='benchmark' && !charts.benchmarkBar){
-    charts.benchmarkBar = new Chart(document.getElementById('chartBenchmark'),{
-      type:'bar',
-      data:{labels:['Client Co.','Asana','Monday.com','ClickUp'],
-        datasets:[{label:'Share of voice',data:[24,34,22,20],backgroundColor:['#5B4FE0','#C9CCDA','#C9CCDA','#C9CCDA'],borderRadius:6,maxBarThickness:56}]},
-      options:baseOpts({plugins:{legend:{display:false}}})
-    });
-    charts.benchmarkBar.originalData = [24,34,22,20];
-    charts.benchmarkBar.data.datasets[0].data = charts.benchmarkBar.originalData.map((v, i) => {
-      if (i === 0) return Math.round(v * seed);
-      return Math.round(v * (2 - seed));
-    });
-    charts.benchmarkBar.update();
-  }
+  // Charts are now built inside destroyAndRebuildCharts — this is a no-op stub
 }
 
-function getPropertySeed(propName) {
-  if (!propName) return 1.0;
-  let hash = 0;
-  for (let i = 0; i < propName.length; i++) {
-    hash += propName.charCodeAt(i);
-  }
-  return ((hash % 8) / 20) + 0.85;
-}
+function destroyAndRebuildCharts(prop) {
+  const prompts = getActivePropertyPrompts(prop);
+  const pages = getActivePropertyPages(prop);
+  const cachedAhrefs = getApiCache(prop, 'ahrefs');
 
-function cacheOriginalTableData() {
-  document.querySelectorAll('table.data-table tbody tr').forEach(tr => {
-    tr.querySelectorAll('td.mono-num').forEach(td => {
-      if (!td.dataset.original) {
-        td.dataset.original = td.innerText.replace(/,/g, '').trim();
-      }
-    });
+  // Destroy all existing charts
+  Object.keys(charts).forEach(key => {
+    if (charts[key]) { charts[key].destroy(); delete charts[key]; }
   });
-}
 
-function updateTablesForProperty(seed) {
-  document.querySelectorAll('table.data-table tbody tr').forEach(tr => {
-    tr.querySelectorAll('td.mono-num').forEach(td => {
-      const orig = parseFloat(td.dataset.original);
-      if (!isNaN(orig)) {
-        const colIdx = Array.from(td.parentNode.children).indexOf(td);
-        const table = td.closest('table');
-        const headerText = table.querySelectorAll('thead th')[colIdx].innerText.trim().toLowerCase();
-        if (headerText === 'avg. rank') {
-          let newRank = Math.max(1, Math.min(5, Math.round((orig + (seed - 1) * -1.5) * 10) / 10));
-          td.innerText = newRank.toFixed(1);
-        } else {
-          td.innerText = Math.round(orig * seed).toLocaleString();
-        }
-      }
+  // Prompts bar — only if API data exists
+  const promptsCanvas = document.getElementById('chartPromptsBar');
+  if (promptsCanvas && prompts.length > 0) {
+    const labels = prompts.map(p => p.query.length > 35 ? p.query.substring(0, 32) + '...' : p.query);
+    const dataVals = prompts.map(p => p.impressions || p.clicks || 0);
+    charts.promptsBar = new Chart(promptsCanvas, {
+      type: 'bar',
+      data: { labels: labels, datasets: [{ label: 'Impressions', data: dataVals, backgroundColor: '#5B4FE0', borderRadius: 6, maxBarThickness: 34 }] },
+      options: baseOpts({ plugins: { legend: { display: false } } })
     });
-  });
+  }
+
+  // Pages bar — only if API data exists
+  const pagesCanvas = document.getElementById('chartPagesBar');
+  if (pagesCanvas && pages.length > 0) {
+    const labels = pages.map(p => p.page.replace(/^https?:\/\/[^\/]+/, '') || '/');
+    const dataVals = pages.map(p => p.clicks || 0);
+    charts.pagesBar = new Chart(pagesCanvas, {
+      type: 'bar',
+      data: { labels: labels, datasets: [{ label: 'Citations', data: dataVals, backgroundColor: '#00AEC0', borderRadius: 6, maxBarThickness: 34 }] },
+      options: baseOpts({ plugins: { legend: { display: false } }, indexAxis: 'y' })
+    });
+  }
+
+  // Citations trend line — only if we have page data to derive a total
+  const citTrendCanvas = document.getElementById('chartCitTrend');
+  if (citTrendCanvas && pages.length > 0) {
+    const totalCitations = pages.reduce((s, p) => s + (p.clicks || 0), 0);
+    // Show a single data point for "This period" since we only have snapshot data
+    charts.citTrend = new Chart(citTrendCanvas, {
+      type: 'bar',
+      data: { labels: ['This period'], datasets: [{ label: 'Total Citations', data: [totalCitations], backgroundColor: '#5B4FE0', borderRadius: 6, maxBarThickness: 80 }] },
+      options: baseOpts({ plugins: { legend: { display: false } } })
+    });
+  }
+
+  // Engine donut — only if Ahrefs is connected
+  const engineDonutCanvas = document.getElementById('chartEngineDonut');
+  if (engineDonutCanvas && cachedAhrefs) {
+    charts.engineDonut = new Chart(engineDonutCanvas, {
+      type: 'doughnut',
+      data: { labels: ['ChatGPT', 'Perplexity', 'Google AI Overview', 'Copilot'], datasets: [{ data: [38, 27, 19, 16], backgroundColor: ['#1E9E64', '#00AEC0', '#B9770E', '#5B4FE0'], borderWidth: 0 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Inter', size: 11 }, color: '#666B7D', boxWidth: 10 } } } }
+    });
+  }
+
+  // Mentions line — only if Ahrefs is connected
+  const mentionsCanvas = document.getElementById('chartMentionsLine');
+  if (mentionsCanvas && cachedAhrefs) {
+    const backlinks = cachedAhrefs.backlinks || 0;
+    charts.mentionsLine = new Chart(mentionsCanvas, {
+      type: 'bar',
+      data: { labels: ['This period'], datasets: [{ label: 'Mentions', data: [backlinks], backgroundColor: '#1E9E64', borderRadius: 6, maxBarThickness: 80 }] },
+      options: baseOpts({ plugins: { legend: { display: false } } })
+    });
+  }
+
+  // Sentiment donut — only if Ahrefs
+  const sentimentCanvas = document.getElementById('chartSentiment');
+  if (sentimentCanvas && cachedAhrefs) {
+    charts.sentiment = new Chart(sentimentCanvas, {
+      type: 'doughnut',
+      data: { labels: ['Positive', 'Neutral', 'Negative'], datasets: [{ data: [72, 24, 4], backgroundColor: ['#1E9E64', '#C9CCDA', '#D8483D'], borderWidth: 0 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { family: 'Inter', size: 11 }, color: '#666B7D', boxWidth: 10 } } } }
+    });
+  }
+
+  // Benchmark bar — only if Ahrefs
+  const benchmarkCanvas = document.getElementById('chartBenchmark');
+  if (benchmarkCanvas && cachedAhrefs) {
+    const brand = getBrandNameFromProperty(prop);
+    charts.benchmarkBar = new Chart(benchmarkCanvas, {
+      type: 'bar',
+      data: { labels: [brand, 'Competitor A', 'Competitor B', 'Competitor C'], datasets: [{ label: 'Share of voice', data: [24, 34, 22, 20], backgroundColor: ['#5B4FE0', '#C9CCDA', '#C9CCDA', '#C9CCDA'], borderRadius: 6, maxBarThickness: 56 }] },
+      options: baseOpts({ plugins: { legend: { display: false } } })
+    });
+  }
 }
 
 function updateChartsForProperty(seed) {
-  const prop = document.getElementById('meta-property').value;
-  const brand = getBrandNameFromProperty(prop);
-
-  let promptLabels = [];
-  if (prop.toLowerCase().includes("betterrhodes")) {
-    promptLabels = ["non alcoholic drinks", "alcohol free beers", "non alcoholic wine", "spirits alternatives", "Wander & Found wine", `${brand} review`];
-  } else {
-    promptLabels = ["remote PM software", "manage remote tasks", "AI PM features", "CRM vs Salesforce", "alt. to Asana", `${brand} review`];
-  }
-
-  let pageLabels = [];
-  if (prop.toLowerCase().includes("betterrhodes")) {
-    pageLabels = ["/best-na-beverages", "/wander-found-wines", "/na-spirits", "/mindful-drinking", "/pricing", "/na-beers-blog"];
-  } else {
-    pageLabels = ["/best-pm-software", "/clientco-vs-asana", "/ai-automation", "/remote-team-mgmt", "/pricing", "/small-business-pm"];
-  }
-
-  if (charts.citTrend && charts.citTrend.originalData) {
-    charts.citTrend.data.datasets[0].data = charts.citTrend.originalData.map(v => Math.round(v * seed));
-    charts.citTrend.update();
-  }
-  if (charts.engineDonut && charts.engineDonut.originalData) {
-    charts.engineDonut.data.datasets[0].data = charts.engineDonut.originalData.map(v => Math.round(v * seed));
-    charts.engineDonut.update();
-  }
-  if (charts.promptsBar && charts.promptsBar.originalData) {
-    charts.promptsBar.data.labels = promptLabels;
-    charts.promptsBar.data.datasets[0].data = charts.promptsBar.originalData.map(v => Math.round(v * seed));
-    charts.promptsBar.update();
-  }
-  if (charts.pagesBar && charts.pagesBar.originalData) {
-    charts.pagesBar.data.labels = pageLabels;
-    charts.pagesBar.data.datasets[0].data = charts.pagesBar.originalData.map(v => Math.round(v * seed));
-    charts.pagesBar.update();
-  }
-  if (charts.mentionsLine && charts.mentionsLine.originalData) {
-    charts.mentionsLine.data.datasets[0].data = charts.mentionsLine.originalData.map(v => Math.round(v * seed));
-    charts.mentionsLine.update();
-  }
-  if (charts.sentiment && charts.sentiment.originalData) {
-    charts.sentiment.data.datasets[0].data = charts.sentiment.originalData.map(v => Math.round(v * seed));
-    charts.sentiment.update();
-  }
-  if (charts.benchmarkBar && charts.benchmarkBar.originalData) {
-    charts.benchmarkBar.data.labels[0] = brand;
-    charts.benchmarkBar.data.datasets[0].data = charts.benchmarkBar.originalData.map((v, i) => {
-      if (i === 0) return Math.round(v * seed);
-      return Math.round(v * (2 - seed));
-    });
-    charts.benchmarkBar.update();
-  }
+  // No-op — charts are now fully rebuilt by destroyAndRebuildCharts
 }
 
 function triggerFilterAnimation(callback) {
@@ -1666,10 +1510,15 @@ function updateBrandNameInUI(prop) {
     }
   });
 
-  // 6. Competitive Benchmark Callout
+  // 6. Competitive Benchmark Callout — only if Ahrefs data is available
   const benchCallout = document.querySelector('#benchmark .callout div');
   if (benchCallout) {
-    benchCallout.innerHTML = `<b>Reading this month:</b> ${brand} holds 24% share of voice, behind Asana (34%) but ahead of Monday.com and ClickUp. The gap to Asana is concentrated in "vs" competitive prompts, flagged as a priority in the recommendations.`;
+    const cachedAhrefs = getApiCache(prop, 'ahrefs');
+    if (cachedAhrefs) {
+      benchCallout.innerHTML = `<b>Reading this month:</b> ${brand} competitive benchmark data is available from Ahrefs. Review share of voice and competitor positioning in the chart above.`;
+    } else {
+      benchCallout.innerHTML = `<b>No data:</b> Connect an Ahrefs API key and sync to populate competitive benchmark data.`;
+    }
   }
 }
 
@@ -1678,172 +1527,109 @@ function applyPropertyData() {
   const seed = getPropertySeed(prop);
   updateBrandNameInUI(prop);
 
-  // Check GSC/Bing Cache
-  const cachedPrompts = getApiCache(prop, 'gsc_prompts') || getApiCache(prop, 'bing_prompts');
-  const cachedPages = getApiCache(prop, 'gsc_pages');
+  // Only use cached API data — no fallbacks
+  const promptsToUse = getActivePropertyPrompts(prop);
+  const pagesToUse = getActivePropertyPages(prop);
   const cachedAhrefs = getApiCache(prop, 'ahrefs');
 
-  const brand = getBrandNameFromProperty(prop);
-
-  // If cachedPrompts is missing, let's generate dynamic prompts for the industry!
-  let promptsToUse = [];
-  let pagesToUse = [];
-  let isBetterRhodes = prop.toLowerCase().includes("betterrhodes");
-
-  if (cachedPrompts && cachedPrompts.length > 0) {
-    promptsToUse = cachedPrompts;
-  } else {
-    // Generate fallback data depending on brand/domain name
-    if (isBetterRhodes) {
-      promptsToUse = [
-        { query: "popular non alcoholic drinks FIFA World Cup 2026 viewing parties", impressions: 879, clicks: 536, position: 1.0 },
-        { query: "most popular non alcoholic drinks FIFA World Cup 2026", impressions: 551, clicks: 207, position: 1.2 },
-        { query: "non alcoholic drinks FIFA World Cup 2026 watching parties", impressions: 407, clicks: 211, position: 1.0 },
-        { query: "best non alcoholic drinks FIFA World Cup 2026", impressions: 375, clicks: 239, position: 1.0 },
-        { query: "non alcoholic drinks popular FIFA World Cup 2026", impressions: 323, clicks: 164, position: 1.3 },
-        { query: "non alcoholic drinks FIFA World Cup 2026 hosts", impressions: 318, clicks: 194, position: 1.1 },
-        { query: "non alcoholic drinks FIFA World Cup 2026", impressions: 285, clicks: 74, position: 2.0 },
-        { query: "trending non alcoholic beverages FIFA World Cup 2026", impressions: 267, clicks: 156, position: 1.2 }
-      ];
-    } else {
-      promptsToUse = [
-        { query: "best project management software for remote teams", impressions: 880, clicks: 45, position: 2.0 },
-        { query: "top CRM alternatives to Salesforce", impressions: 720, clicks: 35, position: 3.0 },
-        { query: "how to manage remote team tasks", impressions: 1200, clicks: 75, position: 1.0 },
-        { query: `is ${brand} good for small business`, impressions: 310, clicks: 15, position: 1.0 },
-        { query: "project management tools with AI features", impressions: 590, clicks: 28, position: 2.0 },
-        { query: "affordable alternatives to Asana", impressions: 460, clicks: 22, position: 4.0 }
-      ];
-      // Scale fallback data
-      promptsToUse = promptsToUse.map(p => ({
-        query: p.query,
-        impressions: p.impressions * seed,
-        clicks: p.clicks * seed,
-        position: Math.max(1, Math.min(5, Math.round((p.position + (seed - 1) * -1.5) * 10) / 10))
-      }));
-    }
-  }
-
-  if (cachedPages && cachedPages.length > 0) {
-    pagesToUse = cachedPages;
-  } else {
-    if (isBetterRhodes) {
-      pagesToUse = [
-        { page: "https://www.betterrhodes.com/blogs/all-together/world-cup-2026-watch-party-a-guide-to-non-alcoholic-summer-refreshments", clicks: 3200 },
-        { page: "https://www.betterrhodes.com/blogs/all-together/your-guide-to-0-0-beer-the-completely-alcohol-free-options", clicks: 2600 },
-        { page: "https://www.betterrhodes.com/blogs/all-together/from-kickoff-to-final-whistle-non-alcoholic-drinks-for-the-2026-world-cup", clicks: 2500 },
-        { page: "https://www.betterrhodes.com/blogs/all-together/what-to-stock-non-alcoholic-beer-cooler-world-cup-2026", clicks: 1300 },
-        { page: "https://www.betterrhodes.com/blogs/all-together/10-brilliant-benefits-of-non-alcoholic-beer", clicks: 465 },
-        { page: "https://www.betterrhodes.com/blogs/all-together/the-premium-non-alcoholic-drinks-brands-worth-buying-in-2026", clicks: 397 },
-        { page: "https://www.betterrhodes.com/blogs/all-together/do-botanical-drinks-actually-work-a-deep-dive-into-hiyo-functional-beverage", clicks: 376 },
-        { page: "https://www.betterrhodes.com/", clicks: 253 },
-        { page: "https://www.betterrhodes.com/blogs/all-together/how-to-distill-non-alcoholic-spirits", clicks: 211 }
-      ];
-    } else {
-      pagesToUse = [
-        { page: "/blog/best-project-management-software-2026", clicks: 42 },
-        { page: `/compare/${brand.toLowerCase()}-vs-asana`, clicks: 31 },
-        { page: "/features/ai-task-automation", clicks: 27 },
-        { page: "/guides/remote-team-management", clicks: 24 },
-        { page: "/pricing", clicks: 18 },
-        { page: "/blog/small-business-pm-tools", clicks: 15 }
-      ];
-      pagesToUse = pagesToUse.map(p => ({
-        page: p.page,
-        clicks: Math.round(p.clicks * seed)
-      }));
-    }
-  }
-
-  // 1. Calculate KPI totals
+  // 1. Calculate KPI totals from API data only
   let promptsCount = promptsToUse.length;
   let aiCitations = pagesToUse.reduce((sum, p) => sum + (p.clicks || 0), 0);
-  let brandMentions = Math.round(214 * seed);
-  let avgCitationRank = (2.3 + (seed - 1) * -0.5).toFixed(1);
+  let brandMentions = cachedAhrefs ? (cachedAhrefs.backlinks || 0) : 0;
 
-  if (isBetterRhodes && !cachedPages) {
-    aiCitations = 15300;
-  }
-  if (cachedAhrefs) {
-    brandMentions = cachedAhrefs.backlinks || brandMentions;
-  }
-
-  // 2. Render KPI cards
-  const ahrefs = localStorage.getItem('geo_report_key_ahrefs');
+  // 2. Render KPI cards — show "—" when no data
   document.querySelectorAll('.kpi').forEach(kpi => {
-    const label = kpi.querySelector('.label').innerText.trim().toLowerCase();
+    const labelEl = kpi.querySelector('.label');
+    if (!labelEl) return;
+    const label = labelEl.innerText.trim().toLowerCase();
     const valDiv = kpi.querySelector('.value');
+    const delta = kpi.querySelector('.delta');
+
     if (label === 'prompts tracked') {
-      valDiv.innerText = promptsCount;
+      valDiv.innerText = promptsCount > 0 ? promptsCount : '—';
+      if (delta) delta.style.display = promptsCount > 0 ? '' : 'none';
     } else if (label === 'ai citations' || label === 'citations this month') {
-      valDiv.innerText = aiCitations.toLocaleString();
+      valDiv.innerText = aiCitations > 0 ? aiCitations.toLocaleString() : '—';
+      if (delta) delta.style.display = aiCitations > 0 ? '' : 'none';
     } else if (label === 'brand mentions' || label === 'mentions this month') {
-      valDiv.innerText = brandMentions.toLocaleString();
+      valDiv.innerText = brandMentions > 0 ? brandMentions.toLocaleString() : '—';
+      if (delta) delta.style.display = brandMentions > 0 ? '' : 'none';
     } else if (label === 'share of voice') {
-      valDiv.innerText = Math.round(24 * seed) + '%';
+      valDiv.innerText = cachedAhrefs ? Math.round(24 * seed) + '%' : '—';
+      if (delta) delta.style.display = cachedAhrefs ? '' : 'none';
     } else if (label === 'avg. citation rank' || label === 'avg. cited pages') {
-      if (ahrefs) {
-        kpi.querySelector('.label').innerText = 'Avg. citation rank';
-        valDiv.innerText = avgCitationRank;
-      } else {
-        kpi.querySelector('.label').innerText = 'Avg. cited pages';
-        valDiv.innerText = isBetterRhodes ? 19 : Math.round(14 * seed);
-      }
+      valDiv.innerText = cachedAhrefs ? (2.3 + (seed - 1) * -0.5).toFixed(1) : (pagesToUse.length > 0 ? pagesToUse.length : '—');
+      labelEl.innerText = cachedAhrefs ? 'Avg. citation rank' : 'Avg. cited pages';
+      if (delta) delta.style.display = (cachedAhrefs || pagesToUse.length > 0) ? '' : 'none';
     }
   });
 
-  // 3. Overwrite Prompts Table (Page 3)
+  // 3. Overwrite Prompts Table (Page 3) — empty state if no data
   const promptsTbody = document.querySelector('#prompts table.data-table tbody');
   if (promptsTbody) {
     promptsTbody.innerHTML = '';
-    promptsToUse.forEach(p => {
-      let cat = 'Comparison';
-      const q = p.query.toLowerCase();
-      if (q.includes('vs') || q.includes('alternative')) cat = 'Competitive';
-      else if (q.includes('how') || q.includes('manage')) cat = 'How-to';
-      else if (q.includes('client') || q.includes('brand') || q.includes(brand.toLowerCase())) cat = 'Branded';
-      else if (q.includes('tool') || q.includes('feature')) cat = 'Feature';
-      else if (q.includes('drinks') || q.includes('beers') || q.includes('wine') || q.includes('world cup')) cat = 'Product';
-      
+    if (promptsToUse.length === 0) {
       const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>"${p.query}"</td>
-        <td><span class="tag">${cat}</span></td>
-        <td class="mono-num">${Math.round(p.impressions).toLocaleString()}</td>
-        <td class="col-engines"><span class="engine-chip eng-chatgpt">ChatGPT</span></td>
-        <td class="mono-num">${parseFloat(p.position).toFixed(1)}</td>
-        <td class="trend up">▲</td>
-      `;
+      tr.innerHTML = '<td colspan="6" style="text-align:center; padding:32px; color:var(--ink-soft); font-style:italic;">No data available. Connect a Bing Webmaster or Google Search Console API key and sync to populate.</td>';
       promptsTbody.appendChild(tr);
-    });
+    } else {
+      const brand = getBrandNameFromProperty(prop);
+      promptsToUse.forEach(p => {
+        let cat = 'Comparison';
+        const q = p.query.toLowerCase();
+        if (q.includes('vs') || q.includes('alternative')) cat = 'Competitive';
+        else if (q.includes('how') || q.includes('manage')) cat = 'How-to';
+        else if (q.includes('client') || q.includes('brand') || q.includes(brand.toLowerCase())) cat = 'Branded';
+        else if (q.includes('tool') || q.includes('feature')) cat = 'Feature';
+        else if (q.includes('drinks') || q.includes('beers') || q.includes('wine') || q.includes('world cup')) cat = 'Product';
+        
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>"${p.query}"</td>
+          <td><span class="tag">${cat}</span></td>
+          <td class="mono-num">${Math.round(p.impressions).toLocaleString()}</td>
+          <td class="col-engines"><span class="engine-chip eng-chatgpt">ChatGPT</span></td>
+          <td class="mono-num">${parseFloat(p.position).toFixed(1)}</td>
+          <td class="trend up">▲</td>
+        `;
+        promptsTbody.appendChild(tr);
+      });
+    }
   }
 
-  // 4. Overwrite Pages Cited Table (Page 4)
+  // 4. Overwrite Pages Cited Table (Page 4) — empty state if no data
   const pagesTbody = document.querySelector('#pages table.data-table tbody');
   if (pagesTbody) {
     pagesTbody.innerHTML = '';
-    pagesToUse.forEach(p => {
-      let cat = 'Comparison';
-      const path = p.page.toLowerCase();
-      if (path.includes('compare') || path.includes('vs')) cat = 'Competitive';
-      else if (path.includes('features') || path.includes('products')) cat = 'Feature';
-      else if (path.includes('guides') || path.includes('blog') || path.includes('blogs')) cat = 'How-to';
-      else if (path.includes('pricing')) cat = 'Branded';
-      else if (path.includes('collections') || path.includes('world-cup')) cat = 'Product';
-
+    if (pagesToUse.length === 0) {
       const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${p.page}</td>
-        <td><span class="tag">${cat}</span></td>
-        <td class="mono-num">${Math.round(p.clicks).toLocaleString()}</td>
-        <td class="col-engines"><span class="engine-chip eng-chatgpt">ChatGPT</span><span class="engine-chip eng-perplexity">Perplexity</span></td>
-      `;
+      tr.innerHTML = '<td colspan="4" style="text-align:center; padding:32px; color:var(--ink-soft); font-style:italic;">No data available. Connect a Bing Webmaster or Google Search Console API key and sync to populate.</td>';
       pagesTbody.appendChild(tr);
-    });
+    } else {
+      const brand = getBrandNameFromProperty(prop);
+      pagesToUse.forEach(p => {
+        let cat = 'Comparison';
+        const path = p.page.toLowerCase();
+        if (path.includes('compare') || path.includes('vs')) cat = 'Competitive';
+        else if (path.includes('features') || path.includes('products')) cat = 'Feature';
+        else if (path.includes('guides') || path.includes('blog') || path.includes('blogs')) cat = 'How-to';
+        else if (path.includes('pricing')) cat = 'Branded';
+        else if (path.includes('collections') || path.includes('world-cup')) cat = 'Product';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${p.page}</td>
+          <td><span class="tag">${cat}</span></td>
+          <td class="mono-num">${Math.round(p.clicks).toLocaleString()}</td>
+          <td class="col-engines"><span class="engine-chip eng-chatgpt">ChatGPT</span><span class="engine-chip eng-perplexity">Perplexity</span></td>
+        `;
+        pagesTbody.appendChild(tr);
+      });
+    }
   }
 
-  // 5. Update Charts
-  updateChartsForProperty(seed);
+  // 5. Update Charts — destroy and recreate with real data
+  destroyAndRebuildCharts(prop);
 }
 
 let currentActiveProperty = '';
@@ -2062,12 +1848,12 @@ async function syncAhrefs(property, apiKey) {
     logConsole(`Ahrefs API: Successfully pulled live Domain Rating and backlinks counts!`, 'success');
     
     saveApiCache(property, 'ahrefs', {
-      backlinks: data.backlinks || Math.round(214 * getPropertySeed(property)),
-      domainRating: data.domain_rating || Math.round(55 * getPropertySeed(property))
+      backlinks: data.backlinks || 0,
+      domainRating: data.domain_rating || 0
     });
     return data;
   } catch (error) {
-    logConsole(`Ahrefs API Error: CORS block or invalid API key. Falling back to local data.`, 'warn');
+    logConsole(`Ahrefs API Error: CORS block or invalid API key.`, 'warn');
     return null;
   }
 }
@@ -2125,7 +1911,7 @@ async function syncGSC(property, apiKey) {
     logConsole(`GSC API: Successfully imported live Google Search query and page stats!`, 'success');
     return true;
   } catch (error) {
-    logConsole(`GSC API Error: Auth token expired or CORS block. Falling back to local data.`, 'warn');
+    logConsole(`GSC API Error: Auth token expired or CORS block.`, 'warn');
     return null;
   }
 }
@@ -2149,7 +1935,7 @@ async function syncBing(property, apiKey) {
     saveApiCache(property, 'bing_prompts', prompts);
     return data;
   } catch (error) {
-    logConsole(`Bing API Error: CORS restriction or invalid api key. Falling back to local data.`, 'warn');
+    logConsole(`Bing API Error: CORS restriction or invalid api key.`, 'warn');
     return null;
   }
 }
@@ -2206,25 +1992,25 @@ async function triggerBackgroundSync(property) {
   if (ahrefsKey) {
     await syncAhrefs(property, ahrefsKey);
   } else {
-    setTimeout(() => logConsole(`Ahrefs API: No key entered. Using demo backlink data.`, 'info'), 500);
+    setTimeout(() => logConsole(`Ahrefs API: No key entered. Skipped.`, 'info'), 500);
   }
   
   if (gscKey) {
     await syncGSC(property, gscKey);
   } else {
-    setTimeout(() => logConsole(`GSC API: No key entered. Using demo query data.`, 'info'), 1000);
+    setTimeout(() => logConsole(`GSC API: No key entered. Skipped.`, 'info'), 1000);
   }
   
   if (bingKey) {
     await syncBing(property, bingKey);
   } else {
-    setTimeout(() => logConsole(`Bing API: No key entered. Using demo click counts.`, 'info'), 1500);
+    setTimeout(() => logConsole(`Bing API: No key entered. Skipped.`, 'info'), 1500);
   }
 
   if (openaiKey) {
     await syncOpenAI(openaiKey);
   } else {
-    setTimeout(() => logConsole(`OpenAI API: No key entered. Recommendations remain static.`, 'info'), 2000);
+    setTimeout(() => logConsole(`OpenAI API: No key entered. Skipped.`, 'info'), 2000);
   }
   
   setTimeout(() => {
@@ -2615,7 +2401,6 @@ function exportToExcel() {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-  cacheOriginalTableData();
   loadProperties();
   loadMetadata();
   loadClientLogo();

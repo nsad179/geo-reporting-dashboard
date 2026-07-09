@@ -18,8 +18,8 @@ export async function POST(request) {
       return NextResponse.json({
         success: true,
         data: {
-          backlinks: data.backlinks || Math.round(214 * getFallbackSeed(property)),
-          domainRating: data.domain_rating || Math.round(55 * getFallbackSeed(property))
+          backlinks: data.backlinks || 0,
+          domainRating: data.domain_rating || 0
         }
       });
     }
@@ -92,10 +92,10 @@ export async function POST(request) {
       const data = await response.json();
       const list = data.d || data || [];
       const prompts = list.map(item => ({
-        query: item.Query || item.query || 'Search Query',
-        impressions: item.Impressions || item.impressions || 100,
-        clicks: item.Clicks || item.clicks || 5,
-        position: item.AvgPosition || item.position || 2.0
+        query: item.Query || item.query || 'Unknown Query',
+        impressions: item.Impressions || item.impressions || 0,
+        clicks: item.Clicks || item.clicks || 0,
+        position: item.AvgPosition || item.position || 0
       }));
       return NextResponse.json({
         success: true,
@@ -137,11 +137,3 @@ export async function POST(request) {
   }
 }
 
-function getFallbackSeed(propName) {
-  if (!propName) return 1.0;
-  let hash = 0;
-  for (let i = 0; i < propName.length; i++) {
-    hash += propName.charCodeAt(i);
-  }
-  return ((hash % 8) / 20) + 0.85;
-}

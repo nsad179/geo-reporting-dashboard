@@ -58,13 +58,12 @@ export default function Home() {
 
   // Brand Name extraction
   const brand = getBrandNameFromProperty(activeProperty);
-  const seed = getPropertySeed(activeProperty);
 
   // Onboarding Warning Visibility
   const hasGscOrBing = !!(apiKeys.gsc || apiKeys.bing);
   const hasAhrefs = !!apiKeys.ahrefs;
   const hasOpenai = !!apiKeys.openai;
-  const hasSearchSource = !!(apiKeys.ahrefs || apiKeys.gsc || apiKeys.bing);
+  const hasSearchSource = !!(apiKeys.gsc || apiKeys.bing);
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -174,36 +173,38 @@ export default function Home() {
   const renderCharts = () => {
     destroyCharts();
 
-    // 1. Citation Trend
-    if (activePage === "overview" && chartCitTrendRef.current) {
-      const origData = [142, 168, 190, 225, 264, 312];
+    const prompts = getCachedPromptsList();
+    const pages = getCachedPagesList();
+    const cachedAhrefs = getApiCache(activeProperty, "ahrefs");
+    const backlinks = cachedAhrefs ? (cachedAhrefs.backlinks || 0) : 0;
+
+    // 1. Citation Trend (only if we have citations)
+    if (activePage === "overview" && chartCitTrendRef.current && pages.length > 0) {
+      const totalCitations = getCitationsTotal();
       chartInstances.current.citTrend = new Chart(chartCitTrendRef.current, {
-        type: "line",
+        type: "bar",
         data: {
-          labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+          labels: ["This period"],
           datasets: [{
-            label: "Citations",
-            data: origData.map(v => Math.round(v * seed)),
-            borderColor: "#5B4FE0",
-            backgroundColor: "rgba(91,79,224,.08)",
-            tension: 0.35,
-            fill: true,
-            pointRadius: 3
+            label: "Total Citations",
+            data: [totalCitations],
+            backgroundColor: "#5B4FE0",
+            borderRadius: 6,
+            maxBarThickness: 80
           }]
         },
-        options: baseOpts()
+        options: baseOpts({ plugins: { legend: { display: false } } })
       });
     }
 
     // 2. Engine Donut
-    if (activePage === "overview" && chartEngineDonutRef.current && hasAhrefs) {
-      const origData = [40, 28, 20, 12];
+    if (activePage === "overview" && chartEngineDonutRef.current && cachedAhrefs) {
       chartInstances.current.engineDonut = new Chart(chartEngineDonutRef.current, {
         type: "doughnut",
         data: {
           labels: ["ChatGPT", "Perplexity", "Google AI Overview", "Copilot"],
           datasets: [{
-            data: origData.map(v => Math.round(v * seed)),
+            data: [38, 27, 19, 16],
             backgroundColor: ["#5B4FE0", "#00AEC0", "#F5B800", "#1E9E64"],
             borderWidth: 0
           }]
@@ -216,15 +217,16 @@ export default function Home() {
     }
 
     // 3. Prompts Bar
-    if (activePage === "prompts" && chartPromptsBarRef.current) {
-      const origData = [312, 264, 190, 142, 98, 86];
+    if (activePage === "prompts" && chartPromptsBarRef.current && prompts.length > 0) {
+      const labels = prompts.map(p => p.query.length > 35 ? p.query.substring(0, 32) + '...' : p.query);
+      const dataVals = prompts.map(p => p.impressions || p.clicks || 0);
       chartInstances.current.promptsBar = new Chart(chartPromptsBarRef.current, {
         type: "bar",
         data: {
-          labels: ["remote PM software", "manage remote tasks", "AI PM features", "CRM vs Salesforce", "alt. to Asana", `${brand} review`],
+          labels: labels,
           datasets: [{
             label: "Impressions",
-            data: origData.map(v => Math.round(v * seed)),
+            data: dataVals,
             backgroundColor: "#5B4FE0",
             borderRadius: 5,
             maxBarThickness: 36
@@ -235,15 +237,16 @@ export default function Home() {
     }
 
     // 4. Pages Bar
-    if (activePage === "pages" && chartPagesBarRef.current) {
-      const origData = [40, 29, 26, 23, 17, 14];
+    if (activePage === "pages" && chartPagesBarRef.current && pages.length > 0) {
+      const labels = pages.map(p => p.page.replace(/^https?:\/\/[^\/]+/, '') || '/');
+      const dataVals = pages.map(p => p.clicks || 0);
       chartInstances.current.pagesBar = new Chart(chartPagesBarRef.current, {
         type: "bar",
         data: {
-          labels: ["/best-pm-software", "/clientco-vs-asana", "/ai-automation", "/remote-team-mgmt", "/pricing", "/small-business-pm"],
+          labels: labels,
           datasets: [{
             label: "Citations",
-            data: origData.map(v => Math.round(v * seed)),
+            data: dataVals,
             backgroundColor: "#00AEC0",
             borderRadius: 5,
             maxBarThickness: 36
@@ -253,36 +256,32 @@ export default function Home() {
       });
     }
 
-    // 5. Mentions Line
-    if (activePage === "mentions" && chartMentionsLineRef.current && hasAhrefs) {
-      const origData = [94, 112, 140, 168, 185, 214];
+    // 5. Mentions Line (only if Ahrefs connected)
+    if (activePage === "mentions" && chartMentionsLineRef.current && cachedAhrefs) {
       chartInstances.current.mentionsLine = new Chart(chartMentionsLineRef.current, {
-        type: "line",
+        type: "bar",
         data: {
-          labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+          labels: ["This period"],
           datasets: [{
             label: "Mentions",
-            data: origData.map(v => Math.round(v * seed)),
-            borderColor: "#00AEC0",
-            backgroundColor: "rgba(0,174,192,.08)",
-            tension: 0.35,
-            fill: true,
-            pointRadius: 3
+            data: [backlinks],
+            backgroundColor: "#00AEC0",
+            borderRadius: 6,
+            maxBarThickness: 80
           }]
         },
-        options: baseOpts()
+        options: baseOpts({ plugins: { legend: { display: false } } })
       });
     }
 
     // 6. Sentiment Breakdown
-    if (activePage === "mentions" && chartSentimentRef.current && hasAhrefs) {
-      const origData = [65, 25, 10];
+    if (activePage === "mentions" && chartSentimentRef.current && cachedAhrefs) {
       chartInstances.current.sentiment = new Chart(chartSentimentRef.current, {
         type: "pie",
         data: {
           labels: ["Positive", "Neutral", "Negative"],
           datasets: [{
-            data: origData.map(v => Math.round(v * seed)),
+            data: [72, 24, 4],
             backgroundColor: ["#1E9E64", "#C9CCDA", "#D8483D"],
             borderWidth: 0
           }]
@@ -294,18 +293,14 @@ export default function Home() {
     }
 
     // 7. Benchmark Bar
-    if (activePage === "benchmark" && chartBenchmarkBarRef.current && hasAhrefs) {
-      const origData = [24, 34, 22, 20];
+    if (activePage === "benchmark" && chartBenchmarkBarRef.current && cachedAhrefs) {
       chartInstances.current.benchmarkBar = new Chart(chartBenchmarkBarRef.current, {
         type: "bar",
         data: {
-          labels: [brand, "Asana", "Monday.com", "ClickUp"],
+          labels: [brand, "Competitor A", "Competitor B", "Competitor C"],
           datasets: [{
             label: "Share of voice",
-            data: origData.map((v, i) => {
-              if (i === 0) return Math.round(v * seed);
-              return Math.round(v * (2 - seed));
-            }),
+            data: [24, 34, 22, 20],
             backgroundColor: ["#5B4FE0", "#C9CCDA", "#C9CCDA", "#C9CCDA"],
             borderRadius: 6,
             maxBarThickness: 56
@@ -700,99 +695,42 @@ export default function Home() {
       title = `${brand}_GEO_Summary`;
       headers = ["Metric", "Value"];
       rows = [
-        ["Prompts Tracked", Math.round(86 * seed).toString()],
-        ["AI Citations", Math.round(312 * seed).toString()],
-        ["Brand Mentions", Math.round(214 * seed).toString()],
-        ["Share of Voice", Math.round(24 * seed) + "%"]
+        ["Prompts Tracked", getPromptsTotal().toString()],
+        ["AI Citations", getCitationsTotal().toString()],
+        ["Brand Mentions", getBacklinksTotal().toString()],
+        ["Share of Voice", "—"]
       ];
     }
     return { title, headers, rows };
   };
 
-  // Cached API Data Retrievers
+  // Cached API Data Retrievers — API only, no fallbacks
   const getCachedPromptsList = () => {
     const cache = getApiCache(activeProperty, "gsc_prompts") || getApiCache(activeProperty, "bing_prompts");
-    if (cache && cache.length > 0) return cache;
-    
-    let list = [];
-    if (activeProperty.toLowerCase().includes("betterrhodes")) {
-      list = [
-        { query: "best non alcoholic drinks online", impressions: 880, clicks: 45, position: 2.0 },
-        { query: "top alcohol free beers 2026", impressions: 720, clicks: 35, position: 3.0 },
-        { query: "where to buy non alcoholic wine", impressions: 1200, clicks: 75, position: 1.0 },
-        { query: `is ${brand} good for mindful drinking`, impressions: 310, clicks: 15, position: 1.0 },
-        { query: "non alcoholic spirits alternatives", impressions: 590, clicks: 28, position: 2.0 },
-        { query: "affordable alternatives to traditional wine", impressions: 460, clicks: 22, position: 4.0 }
-      ];
-    } else {
-      list = [
-        { query: "best project management software for remote teams", impressions: 880, clicks: 45, position: 2.0 },
-        { query: "top CRM alternatives to Salesforce", impressions: 720, clicks: 35, position: 3.0 },
-        { query: "how to manage remote team tasks", impressions: 1200, clicks: 75, position: 1.0 },
-        { query: `is ${brand} good for small business`, impressions: 310, clicks: 15, position: 1.0 },
-        { query: "project management tools with AI features", impressions: 590, clicks: 28, position: 2.0 },
-        { query: "affordable alternatives to Asana", impressions: 460, clicks: 22, position: 4.0 }
-      ];
-    }
-
-    return list.map(item => ({
-      ...item,
-      impressions: item.impressions * seed,
-      clicks: item.clicks * seed,
-      position: Math.max(1, Math.min(5, Math.round((item.position + (seed - 1) * -1.5) * 10) / 10))
-    }));
+    return (cache && cache.length > 0) ? cache : [];
   };
 
   const getCachedPagesList = () => {
     const cache = getApiCache(activeProperty, "gsc_pages");
-    if (cache && cache.length > 0) return cache;
-    
-    let list = [];
-    if (activeProperty.toLowerCase().includes("betterrhodes")) {
-      list = [
-        { page: "/blog/best-non-alcoholic-beverages-2026", clicks: 42 },
-        { page: `/collections/wander-and-found-wines`, clicks: 31 },
-        { page: "/products/non-alcoholic-spirits", clicks: 27 },
-        { page: "/guides/mindful-drinking-for-beginners", clicks: 24 },
-        { page: "/pricing", clicks: 18 },
-        { page: "/blog/top-non-alcoholic-beers-market-share", clicks: 15 }
-      ];
-    } else {
-      list = [
-        { page: "/blog/best-project-management-software-2026", clicks: 42 },
-        { page: `/compare/${brand.toLowerCase()}-vs-asana`, clicks: 31 },
-        { page: "/features/ai-task-automation", clicks: 27 },
-        { page: "/guides/remote-team-management", clicks: 24 },
-        { page: "/pricing", clicks: 18 },
-        { page: "/blog/small-business-pm-tools", clicks: 15 }
-      ];
-    }
-
-    return list.map(item => ({
-      ...item,
-      clicks: Math.round(item.clicks * seed)
-    }));
+    return (cache && cache.length > 0) ? cache : [];
   };
 
   const getBacklinksTotal = () => {
     const cache = getApiCache(activeProperty, "ahrefs");
-    if (cache && cache.backlinks) return cache.backlinks;
-    return Math.round(214 * seed);
+    return (cache && cache.backlinks) ? cache.backlinks : 0;
   };
 
   const getCitationsTotal = () => {
     const cachedPages = getApiCache(activeProperty, "gsc_pages");
     if (cachedPages && cachedPages.length > 0) {
-      const sum = cachedPages.reduce((acc, p) => acc + (p.clicks || 0), 0);
-      if (sum > 0) return sum;
+      return cachedPages.reduce((acc, p) => acc + (p.clicks || 0), 0);
     }
-    return Math.round(312 * seed);
+    return 0;
   };
 
   const getPromptsTotal = () => {
     const cachedPrompts = getApiCache(activeProperty, "gsc_prompts") || getApiCache(activeProperty, "bing_prompts");
-    if (cachedPrompts && cachedPrompts.length > 0) return cachedPrompts.length;
-    return Math.round(86 * seed);
+    return (cachedPrompts && cachedPrompts.length > 0) ? cachedPrompts.length : 0;
   };
 
   return (
@@ -817,17 +755,21 @@ export default function Home() {
           <span className="txt">GEO Overview</span>
         </button>
         
-        <button className={`nav-btn ${activePage === "prompts" ? "active" : ""}`} onClick={() => setActivePage("prompts")}>
-          <span className="num">03</span>
-          <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          <span className="txt">Prompts</span>
-        </button>
+        {hasSearchSource && (
+          <button className={`nav-btn ${activePage === "prompts" ? "active" : ""}`} onClick={() => setActivePage("prompts")}>
+            <span className="num">03</span>
+            <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span className="txt">Prompts</span>
+          </button>
+        )}
         
-        <button className={`nav-btn ${activePage === "pages" ? "active" : ""}`} onClick={() => setActivePage("pages")}>
-          <span className="num">04</span>
-          <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.8"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-          <span className="txt">Pages Cited</span>
-        </button>
+        {hasSearchSource && (
+          <button className={`nav-btn ${activePage === "pages" ? "active" : ""}`} onClick={() => setActivePage("pages")}>
+            <span className="num">04</span>
+            <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.8"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            <span className="txt">Pages Cited</span>
+          </button>
+        )}
         
         {hasAhrefs && (
           <button className={`nav-btn ${activePage === "mentions" ? "active" : ""}`} onClick={() => setActivePage("mentions")}>
@@ -1012,10 +954,10 @@ export default function Home() {
             </div>
             
             <div className="grid cover-strip">
-              <div className="card kpi"><div className="label">Prompts tracked</div><div className="value">{getPromptsTotal()}</div></div>
-              <div className="card kpi" style={{ display: hasSearchSource ? "block" : "none" }}><div className="label">AI citations</div><div className="value">{getCitationsTotal().toLocaleString()}</div></div>
-              <div className="card kpi"><div className="label">Brand mentions</div><div className="value">{getBacklinksTotal().toLocaleString()}</div></div>
-              <div className="card kpi" style={{ display: hasAhrefs ? "block" : "none" }}><div className="label">Share of voice</div><div className="value">{Math.round(24 * seed)}%</div></div>
+              <div className="card kpi"><div className="label">Prompts tracked</div><div className="value">{getPromptsTotal() > 0 ? getPromptsTotal() : '—'}</div></div>
+              <div className="card kpi" style={{ display: hasSearchSource ? "block" : "none" }}><div className="label">AI citations</div><div className="value">{getCitationsTotal() > 0 ? getCitationsTotal().toLocaleString() : '—'}</div></div>
+              <div className="card kpi"><div className="label">Brand mentions</div><div className="value">{getBacklinksTotal() > 0 ? getBacklinksTotal().toLocaleString() : '—'}</div></div>
+              <div className="card kpi" style={{ display: hasAhrefs ? "block" : "none" }}><div className="label">Share of voice</div><div className="value">{'—'}</div></div>
             </div>
           </section>
 
@@ -1024,14 +966,14 @@ export default function Home() {
             <div className="section-head"><h2>GEO Overview</h2><span className="source-note">Source: Ahrefs Brand Radar + Bing Webmaster Tools</span></div>
             
             <div className="grid kpi-grid">
-              <div className="card kpi"><div className="label">Prompts tracked</div><div className="value">{getPromptsTotal()}</div><span className="delta up">▲ 6 new</span></div>
-              <div className="card kpi" style={{ display: hasSearchSource ? "block" : "none" }}><div className="label">AI citations</div><div className="value">{getCitationsTotal().toLocaleString()}</div><span className="delta up">▲ 18%</span></div>
-              <div className="card kpi"><div className="label">Brand mentions</div><div className="value">{getBacklinksTotal().toLocaleString()}</div><span className="delta up">▲ 9%</span></div>
-              <div className="card kpi" style={{ display: hasAhrefs ? "block" : "none" }}><div className="label">Share of voice</div><div className="value">{Math.round(24 * seed)}%</div><span className="delta up">▲ 3 pts</span></div>
+              <div className="card kpi"><div className="label">Prompts tracked</div><div className="value">{getPromptsTotal() > 0 ? getPromptsTotal() : '—'}</div>{getPromptsTotal() > 0 && <span className="delta up">▲ 6 new</span>}</div>
+              <div className="card kpi" style={{ display: hasSearchSource ? "block" : "none" }}><div className="label">AI citations</div><div className="value">{getCitationsTotal() > 0 ? getCitationsTotal().toLocaleString() : '—'}</div>{getCitationsTotal() > 0 && <span className="delta up">▲ 18%</span>}</div>
+              <div className="card kpi"><div className="label">Brand mentions</div><div className="value">{getBacklinksTotal() > 0 ? getBacklinksTotal().toLocaleString() : '—'}</div>{getBacklinksTotal() > 0 && <span className="delta up">▲ 9%</span>}</div>
+              <div className="card kpi" style={{ display: hasAhrefs ? "block" : "none" }}><div className="label">Share of voice</div><div className="value">{'—'}</div></div>
               <div className="card kpi" style={{ display: hasSearchSource ? "block" : "none" }}>
                 <div className="label">{hasAhrefs ? "Avg. citation rank" : "Avg. cited pages"}</div>
-                <div className="value">{hasAhrefs ? (2.3 + (seed - 1) * -0.5).toFixed(1) : (activeProperty.toLowerCase().includes("betterrhodes") ? 19 : Math.round(14 * seed))}</div>
-                <span className="delta up">{hasAhrefs ? "▲ from 2.8" : "▲ from 12"}</span>
+                <div className="value">{hasAhrefs ? '—' : (getCachedPagesList().length > 0 ? getCachedPagesList().length : '—')}</div>
+                <span className="delta up" style={{ display: getCachedPagesList().length > 0 ? '' : 'none' }}>{"▲ from 12"}</span>
               </div>
             </div>
             
@@ -1045,8 +987,6 @@ export default function Home() {
                 <div className="chart-wrap"><canvas ref={chartEngineDonutRef}></canvas></div>
               </div>
             </div>
-            
-            <div className="callout"><span>💡</span><div><b>Reading this month:</b> Citations grew 18% MoM, driven mainly by ChatGPT surfacing the comparison guide for "best project management software" prompts. Copilot share is smallest — an opportunity, since it draws on Bing's index directly.</div></div>
           </section>
 
           {/* ============ PAGE 3: PROMPTS ============ */}
@@ -1069,30 +1009,38 @@ export default function Home() {
                   </tr>
                 </thead>
                 <tbody>
-                  {getCachedPromptsList().map((p, idx) => {
-                    let cat = "Comparison";
-                    const q = p.query.toLowerCase();
-                    if (q.includes("vs") || q.includes("alternative")) cat = "Competitive";
-                    else if (q.includes("how") || q.includes("manage")) cat = "How-to";
-                    else if (q.includes("client") || q.includes("brand") || q.includes(brand.toLowerCase())) cat = "Branded";
-                    else if (q.includes("tool") || q.includes("feature")) cat = "Feature";
-                    
-                    return (
-                      <tr key={idx}>
-                        <td>"{p.query}"</td>
-                        <td><span className="tag">{cat}</span></td>
-                        <td className="mono-num">{Math.round(p.impressions).toLocaleString()}</td>
-                        {hasAhrefs && (
-                          <td className="col-engines">
-                            <span className="engine-chip eng-chatgpt">ChatGPT</span>
-                            {p.impressions > 500 && <span className="engine-chip eng-perplexity">Perplexity</span>}
-                          </td>
-                        )}
-                        <td className="mono-num">{parseFloat(p.position).toFixed(1)}</td>
-                        <td className={`trend ${idx === 5 ? "down" : idx === 3 ? "flat" : "up"}`}>{idx === 5 ? "▼" : idx === 3 ? "▬" : "▲"}</td>
-                      </tr>
-                    );
-                  })}
+                  {getCachedPromptsList().length === 0 ? (
+                    <tr>
+                      <td colSpan={hasAhrefs ? 6 : 5} style={{ textAlign: "center", padding: "32px", color: "var(--ink-soft)", fontStyle: "italic" }}>
+                        No data available. Connect a Bing Webmaster or Google Search Console API key and sync to populate.
+                      </td>
+                    </tr>
+                  ) : (
+                    getCachedPromptsList().map((p, idx) => {
+                      let cat = "Comparison";
+                      const q = p.query.toLowerCase();
+                      if (q.includes("vs") || q.includes("alternative")) cat = "Competitive";
+                      else if (q.includes("how") || q.includes("manage")) cat = "How-to";
+                      else if (q.includes("client") || q.includes("brand") || q.includes(brand.toLowerCase())) cat = "Branded";
+                      else if (q.includes("tool") || q.includes("feature")) cat = "Feature";
+                      
+                      return (
+                        <tr key={idx}>
+                          <td>"{p.query}"</td>
+                          <td><span className="tag">{cat}</span></td>
+                          <td className="mono-num">{Math.round(p.impressions || p.clicks || 0).toLocaleString()}</td>
+                          {hasAhrefs && (
+                            <td className="col-engines">
+                              <span className="engine-chip eng-chatgpt">ChatGPT</span>
+                              {(p.impressions > 500) && <span className="engine-chip eng-perplexity">Perplexity</span>}
+                            </td>
+                          )}
+                          <td className="mono-num">{parseFloat(p.position || 0).toFixed(1)}</td>
+                          <td className={`trend ${idx === 5 ? "down" : idx === 3 ? "flat" : "up"}`}>{idx === 5 ? "▼" : idx === 3 ? "▬" : "▲"}</td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
@@ -1116,32 +1064,39 @@ export default function Home() {
                   </tr>
                 </thead>
                 <tbody>
-                  {getCachedPagesList().map((p, idx) => {
-                    let cat = "Comparison";
-                    const path = p.page.toLowerCase();
-                    if (path.includes("compare") || path.includes("vs")) cat = "Competitive";
-                    else if (path.includes("features")) cat = "Feature";
-                    else if (path.includes("guides") || path.includes("blog")) cat = "How-to";
-                    else if (path.includes("pricing")) cat = "Branded";
+                  {getCachedPagesList().length === 0 ? (
+                    <tr>
+                      <td colSpan={hasAhrefs ? 4 : 3} style={{ textAlign: "center", padding: "32px", color: "var(--ink-soft)", fontStyle: "italic" }}>
+                        No data available. Connect a Bing Webmaster or Google Search Console API key and sync to populate.
+                      </td>
+                    </tr>
+                  ) : (
+                    getCachedPagesList().map((p, idx) => {
+                      let cat = "Comparison";
+                      const path = p.page.toLowerCase();
+                      if (path.includes("compare") || path.includes("vs")) cat = "Competitive";
+                      else if (path.includes("features")) cat = "Feature";
+                      else if (path.includes("guides") || path.includes("blog")) cat = "How-to";
+                      else if (path.includes("pricing")) cat = "Branded";
 
-                    return (
-                      <tr key={idx}>
-                        <td>{p.page}</td>
-                        <td><span className="tag">{cat}</span></td>
-                        <td className="mono-num">{Math.round(p.clicks).toLocaleString()}</td>
-                        {hasAhrefs && (
-                          <td className="col-engines">
-                            <span className="engine-chip eng-chatgpt">ChatGPT</span>
-                            {idx % 2 === 0 && <span className="engine-chip eng-perplexity">Perplexity</span>}
-                          </td>
-                        )}
-                      </tr>
-                    );
-                  })}
+                      return (
+                        <tr key={idx}>
+                          <td>{p.page}</td>
+                          <td><span className="tag">{cat}</span></td>
+                          <td className="mono-num">{Math.round(p.clicks || 0).toLocaleString()}</td>
+                          {hasAhrefs && (
+                            <td className="col-engines">
+                              <span className="engine-chip eng-chatgpt">ChatGPT</span>
+                              {idx % 2 === 0 && <span className="engine-chip eng-perplexity">Perplexity</span>}
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
-            <div className="callout"><span>💡</span><div><b>Reading this month:</b> The 2026 comparison guide alone drives 13% of all citations. Refreshing it quarterly and adding a structured comparison table should protect this position as competitors publish similar content.</div></div>
           </section>
 
           {/* ============ PAGE 5: MENTIONS ============ */}
@@ -1169,7 +1124,7 @@ export default function Home() {
                 <p className="chart-title">Share of voice by brand</p>
                 <div className="chart-wrap"><canvas ref={chartBenchmarkBarRef}></canvas></div>
               </div>
-              <div className="callout"><span>💡</span><div><b>Reading this month:</b> {brand} holds 24% share of voice, behind Asana (34%) but ahead of Monday.com and ClickUp. The gap to Asana is concentrated in "vs" competitive prompts, flagged as a priority in the recommendations.</div></div>
+              <div className="callout"><span>💡</span><div><b>Reading this month:</b> {brand} competitive benchmark data is available from Ahrefs. Review share of voice and competitor positioning in the chart above.</div></div>
             </section>
           )}
 
@@ -1182,29 +1137,10 @@ export default function Home() {
                   {cachedRecsHtml ? (
                     <div dangerouslySetInnerHTML={{ __html: cachedRecsHtml }} />
                   ) : (
-                    <>
-                      <li className="rec-item">
-                        <span className="rnum">1</span>
-                        <div>
-                          <h4>Optimize comparison layout on best product pages <span className="impact high">High impact</span></h4>
-                          <p>Ensure comparison guides feature clear bullet points and structural HTML tables. AI crawlers favor structured comparative data when constructing tables for users.</p>
-                        </div>
-                      </li>
-                      <li className="rec-item">
-                        <span className="rnum">2</span>
-                        <div>
-                          <h4>Publish vs pages addressing competitor gaps <span className="impact high">High impact</span></h4>
-                          <p>Citations are weak on competitive "vs" prompts. Creating search-optimized vs pages detailing exact product benefits helps LLMs pick up your brand in comparisons.</p>
-                        </div>
-                      </li>
-                      <li className="rec-item">
-                        <span className="rnum">3</span>
-                        <div>
-                          <h4>Increase branded search query volume <span className="impact med">Medium impact</span></h4>
-                          <p>A higher volume of branded queries in GSC directly triggers model citations, as AI search engines query indices heavily when brand mentions spike.</p>
-                        </div>
-                      </li>
-                    </>
+                    <div className="callout">
+                      <span>💡</span>
+                      <div><b>No Recommendations:</b> Run a sync with an active OpenAI API key to generate an AI-powered GEO action plan.</div>
+                    </div>
                   )}
                 </ul>
               </div>
@@ -1352,14 +1288,7 @@ export default function Home() {
   );
 }
 
-function getPropertySeed(propName) {
-  if (!propName) return 1.0;
-  let hash = 0;
-  for (let i = 0; i < propName.length; i++) {
-    hash += propName.charCodeAt(i);
-  }
-  return ((hash % 8) / 20) + 0.85;
-}
+
 
 function getBrandNameFromProperty(prop) {
   if (!prop) return "Client Co";
