@@ -26,8 +26,6 @@ export default function Home() {
   // API Configuration
   const [apiKeys, setApiKeys] = useState({
     ahrefs: "",
-    bing: "",
-    gsc: "",
     openai: ""
   });
   
@@ -60,10 +58,12 @@ export default function Home() {
   const brand = getBrandNameFromProperty(activeProperty);
 
   // Onboarding Warning Visibility
-  const hasGscOrBing = !!(apiKeys.gsc || apiKeys.bing);
   const hasAhrefs = !!apiKeys.ahrefs;
   const hasOpenai = !!apiKeys.openai;
-  const hasSearchSource = !!(apiKeys.gsc || apiKeys.bing);
+  
+  // Data availability checks for conditional rendering
+  const [hasBingData, setHasBingData] = useState(false);
+  const hasSearchSource = hasBingData;
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -99,11 +99,12 @@ export default function Home() {
       // Load Keys
       const keys = {
         ahrefs: localStorage.getItem("geo_report_key_ahrefs") || "",
-        bing: localStorage.getItem("geo_report_key_bing") || "",
-        gsc: localStorage.getItem("geo_report_key_gsc") || "",
         openai: localStorage.getItem("geo_report_key_openai") || ""
       };
       setApiKeys(keys);
+
+      // Check CSV Data
+      setHasBingData(!!localStorage.getItem(`geo_bing_csv_prompts_${activeProperty}`));
 
       const recs = localStorage.getItem("geo_report_real_recs");
       if (recs) setCachedRecsHtml(recs);
@@ -138,6 +139,66 @@ export default function Home() {
       endDate: updates.endDate || endDate
     };
     localStorage.setItem("geo_report_meta", JSON.stringify(data));
+  };
+
+  // Handle CSV Uploads for Bing AI Data
+  const handleCsvUpload = (e, type) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target.result;
+      const rows = text.split('\n');
+      if (rows.length < 2) return;
+
+      const headers = rows[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+      const parsedData = [];
+
+      for (let i = 1; i < rows.length; i++) {
+        if (!rows[i].trim()) continue;
+        
+        let row = [];
+        let inQuotes = false;
+        let currentVal = '';
+        for (let j = 0; j < rows[i].length; j++) {
+          const char = rows[i][j];
+          if (char === '"') {
+            inQuotes = !inQuotes;
+          } else if (char === ',' && !inQuotes) {
+            row.push(currentVal.trim());
+            currentVal = '';
+          } else {
+            currentVal += char;
+          }
+        }
+        row.push(currentVal.trim());
+
+        const obj = {};
+        headers.forEach((h, idx) => {
+          let val = row[idx] ? row[idx].replace(/^"|"$/g, '') : '';
+          if (val.includes('%')) val = parseFloat(val); // Clean percentage
+          else if (!isNaN(val) && val !== '') val = Number(val.replace(/,/g, '')); // Clean numbers
+          obj[h] = val;
+        });
+        parsedData.push(obj);
+      }
+
+      const cacheKey = `geo_bing_csv_${type}_${activeProperty}`;
+      localStorage.setItem(cacheKey, JSON.stringify(parsedData));
+      
+      setConsoleLogs(prev => [{ time: new Date().toLocaleTimeString(), text: `[System] Parsed ${parsedData.length} rows from ${type} CSV.`, type: "success" }, ...prev]);
+      
+      setHasBingData(true);
+      // Force chart re-render
+      setTimeout(() => {
+        if (chartInstances.current["promptsBar"]) chartInstances.current["promptsBar"].destroy();
+        if (chartInstances.current["pagesBar"]) chartInstances.current["pagesBar"].destroy();
+        if (chartInstances.current["citTrend"]) chartInstances.current["citTrend"].destroy();
+        setActivePage("cover");
+      }, 100);
+    };
+    reader.readAsText(file);
   };
 
   // GA4 Transition Filter Animation
@@ -706,13 +767,19 @@ export default function Home() {
 
   // Cached API Data Retrievers — API only, no fallbacks
   const getCachedPromptsList = () => {
-    const cache = getApiCache(activeProperty, "gsc_prompts") || getApiCache(activeProperty, "bing_prompts");
-    return (cache && cache.length > 0) ? cache : [];
+    if (typeof window !== "undefined") {
+      const cache = localStorage.getItem(`geo_bing_csv_prompts_${activeProperty}`);
+      if (cache) return JSON.parse(cache);
+    }
+    return [];
   };
 
   const getCachedPagesList = () => {
-    const cache = getApiCache(activeProperty, "gsc_pages") || getApiCache(activeProperty, "bing_pages");
-    return (cache && cache.length > 0) ? cache : [];
+    if (typeof window !== "undefined") {
+      const cache = localStorage.getItem(`geo_bing_csv_pages_${activeProperty}`);
+      if (cache) return JSON.parse(cache);
+    }
+    return [];
   };
 
   const getBacklinksTotal = () => {
@@ -721,9 +788,9 @@ export default function Home() {
   };
 
   const getCitationsTotal = () => {
-    const cachedPages = getApiCache(activeProperty, "gsc_pages") || getApiCache(activeProperty, "bing_pages");
+    const cachedPages = getCachedPagesList();
     if (cachedPages && cachedPages.length > 0) {
-      return cachedPages.reduce((acc, p) => acc + (p.clicks || 0), 0);
+      return cachedPages.reduce((acc, p) => acc + (p['Citations'] || p.Citations || p.citations || p.clicks || 0), 0);
     }
     return 0;
   };
@@ -911,7 +978,7 @@ export default function Home() {
           
           {/* ============ PAGE 1: COVER ============ */}
           <section className="page" style={{ display: activePage === "cover" ? "block" : "none" }}>
-            {!hasGscOrBing && (
+            {!hasBingData && (
               <div className="onboarding-banner" id="onboarding-banner">
                 <div className="onboarding-banner-content">
                   <svg className="onboarding-banner-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -1000,43 +1067,36 @@ export default function Home() {
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Prompt</th>
-                    <th>Category</th>
-                    <th>Volume</th>
-                    {hasAhrefs && <th className="col-engines">Cited by</th>}
-                    <th>Avg. rank</th>
-                    <th>Trend</th>
+                    <th>Grounding Query</th>
+                    <th>Intent</th>
+                    <th>Topic</th>
+                    <th>Citations</th>
+                    <th>Citation Share</th>
                   </tr>
                 </thead>
                 <tbody>
                   {getCachedPromptsList().length === 0 ? (
                     <tr>
-                      <td colSpan={hasAhrefs ? 6 : 5} style={{ textAlign: "center", padding: "32px", color: "var(--ink-soft)", fontStyle: "italic" }}>
-                        No data available. Connect a Bing Webmaster or Google Search Console API key and sync to populate.
+                      <td colSpan={5} style={{ textAlign: "center", padding: "32px", color: "var(--ink-soft)", fontStyle: "italic" }}>
+                        No data available. Go to Settings and upload the Bing AI Performance CSV.
                       </td>
                     </tr>
                   ) : (
                     getCachedPromptsList().map((p, idx) => {
-                      let cat = "Comparison";
-                      const q = p.query.toLowerCase();
-                      if (q.includes("vs") || q.includes("alternative")) cat = "Competitive";
-                      else if (q.includes("how") || q.includes("manage")) cat = "How-to";
-                      else if (q.includes("client") || q.includes("brand") || q.includes(brand.toLowerCase())) cat = "Branded";
-                      else if (q.includes("tool") || q.includes("feature")) cat = "Feature";
+                      const query = p['Grounding Query'] || p['query'] || '';
+                      const intent = p['Intent'] || 'Informational';
+                      const topic = p['Topic'] || 'General';
+                      const citations = p['Citations'] || p['impressions'] || 0;
+                      let share = p['Citation Share'] || '0%';
+                      if (typeof share === 'number') share = share.toFixed(2) + '%';
                       
                       return (
                         <tr key={idx}>
-                          <td>"{p.query}"</td>
-                          <td><span className="tag">{cat}</span></td>
-                          <td className="mono-num">{Math.round(p.impressions || p.clicks || 0).toLocaleString()}</td>
-                          {hasAhrefs && (
-                            <td className="col-engines">
-                              <span className="engine-chip eng-chatgpt">ChatGPT</span>
-                              {(p.impressions > 500) && <span className="engine-chip eng-perplexity">Perplexity</span>}
-                            </td>
-                          )}
-                          <td className="mono-num">{parseFloat(p.position || 0).toFixed(1)}</td>
-                          <td className={`trend ${idx === 5 ? "down" : idx === 3 ? "flat" : "up"}`}>{idx === 5 ? "▼" : idx === 3 ? "▬" : "▲"}</td>
+                          <td>"{query}"</td>
+                          <td><span className="tag">{intent}</span></td>
+                          <td>{topic}</td>
+                          <td className="mono-num">{citations.toLocaleString()}</td>
+                          <td className="mono-num">{share}</td>
                         </tr>
                       );
                     })
@@ -1058,38 +1118,25 @@ export default function Home() {
                 <thead>
                   <tr>
                     <th>Page</th>
-                    <th>Cluster</th>
                     <th>Citations</th>
-                    {hasAhrefs && <th className="col-engines">Engines</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {getCachedPagesList().length === 0 ? (
                     <tr>
-                      <td colSpan={hasAhrefs ? 4 : 3} style={{ textAlign: "center", padding: "32px", color: "var(--ink-soft)", fontStyle: "italic" }}>
-                        No data available. Connect a Bing Webmaster or Google Search Console API key and sync to populate.
+                      <td colSpan={2} style={{ textAlign: "center", padding: "32px", color: "var(--ink-soft)", fontStyle: "italic" }}>
+                        No data available. Go to Settings and upload the Bing AI Performance CSV.
                       </td>
                     </tr>
                   ) : (
                     getCachedPagesList().map((p, idx) => {
-                      let cat = "Comparison";
-                      const path = p.page.toLowerCase();
-                      if (path.includes("compare") || path.includes("vs")) cat = "Competitive";
-                      else if (path.includes("features")) cat = "Feature";
-                      else if (path.includes("guides") || path.includes("blog")) cat = "How-to";
-                      else if (path.includes("pricing")) cat = "Branded";
+                      const page = p['Page'] || p['page'] || '';
+                      const citations = p['Citations'] || p['clicks'] || 0;
 
                       return (
                         <tr key={idx}>
-                          <td>{p.page}</td>
-                          <td><span className="tag">{cat}</span></td>
-                          <td className="mono-num">{Math.round(p.clicks || 0).toLocaleString()}</td>
-                          {hasAhrefs && (
-                            <td className="col-engines">
-                              <span className="engine-chip eng-chatgpt">ChatGPT</span>
-                              {idx % 2 === 0 && <span className="engine-chip eng-perplexity">Perplexity</span>}
-                            </td>
-                          )}
+                          <td>{page}</td>
+                          <td className="mono-num">{citations.toLocaleString()}</td>
                         </tr>
                       );
                     })
@@ -1168,32 +1215,6 @@ export default function Home() {
                     </div>
                   </div>
                   
-                  <div style={{ marginBottom: "14px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "5px" }}>
-                      <label style={{ fontSize: "11px", fontWeight: "600", color: "var(--ink-soft)" }}>BING WEBMASTER API KEY</label>
-                      <div className="status-indicator connected" id="status-bing">
-                        <span className="status-dot"></span>
-                        <span className="status-text">{apiKeys.bing ? "Connected" : "Disconnected"}</span>
-                      </div>
-                    </div>
-                    <div className="input-group">
-                      <input type="password" id="key-bing" placeholder="Enter Bing API key" value={apiKeys.bing} onChange={(e) => setApiKeys({ ...apiKeys, bing: e.target.value })} />
-                    </div>
-                  </div>
-                  
-                  <div style={{ marginBottom: "14px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "5px" }}>
-                      <label style={{ fontSize: "11px", fontWeight: "600", color: "var(--ink-soft)" }}>GOOGLE SEARCH CONSOLE KEY</label>
-                      <div className="status-indicator connected" id="status-gsc">
-                        <span className="status-dot"></span>
-                        <span className="status-text">{apiKeys.gsc ? "Connected" : "Disconnected"}</span>
-                      </div>
-                    </div>
-                    <div className="input-group">
-                      <input type="password" id="key-gsc" placeholder="Enter GSC token" value={apiKeys.gsc} onChange={(e) => setApiKeys({ ...apiKeys, gsc: e.target.value })} />
-                    </div>
-                  </div>
-
                   <div style={{ marginBottom: "20px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "5px" }}>
                       <label style={{ fontSize: "11px", fontWeight: "600", color: "var(--ink-soft)" }}>OPENAI API KEY</label>
@@ -1211,6 +1232,22 @@ export default function Home() {
                     <button className="btn-primary" onClick={handleSaveKeys} style={{ flex: 1 }}>Save Keys</button>
                     <button className="btn-secondary" onClick={handleClearKeys} style={{ padding: "0 18px", color: "var(--negative)" }}>Reset Cache</button>
                   </div>
+                </div>
+
+                <div className="card" style={{ marginBottom: "18px" }}>
+                  <h3 style={{ margin: "0 0 16px 0", fontSize: "14px", fontWeight: "600", textTransform: "uppercase" }}>Import Bing AI Performance (CSV)</h3>
+                  
+                  <div style={{ marginBottom: "14px" }}>
+                    <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "var(--ink-soft)", marginBottom: "5px" }}>GROUNDING QUERIES CSV</label>
+                    <input type="file" accept=".csv" onChange={(e) => handleCsvUpload(e, "prompts")} style={{ fontSize: "12px", width: "100%" }} />
+                  </div>
+                  
+                  <div style={{ marginBottom: "14px" }}>
+                    <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "var(--ink-soft)", marginBottom: "5px" }}>PAGES CSV</label>
+                    <input type="file" accept=".csv" onChange={(e) => handleCsvUpload(e, "pages")} style={{ fontSize: "12px", width: "100%" }} />
+                  </div>
+                  
+                  <div style={{ fontSize: "11px", color: "var(--ink-soft)", fontStyle: "italic" }}>Upload exact CSV exports from Bing Webmaster Tools {'>'} AI Performance to populate dashboard metrics. Data is saved locally for this property.</div>
                 </div>
 
                 <div className="card">
