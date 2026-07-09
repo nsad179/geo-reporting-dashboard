@@ -748,11 +748,16 @@ table.data-table tr:last-child td{border-bottom:none;}
 
 /* Print CSS Styles */
 @media print {
+  @page {
+    size: letter portrait;
+    margin: 12mm 15mm;
+  }
   body {
     background: white !important;
     color: black !important;
+    font-size: 11px !important;
   }
-  .sidebar, .topbar-right, .btn, .date-popover, .dropdown-content, .input-btn-toggle, .logo-actions-row, .property-add-form, .status-indicator {
+  .sidebar, .topbar-right, .btn, .date-popover, .dropdown-content, .input-btn-toggle, .logo-actions-row, .property-add-form, .status-indicator, .onboarding-banner {
     display: none !important;
   }
   .shell {
@@ -763,6 +768,26 @@ table.data-table tr:last-child td{border-bottom:none;}
     padding: 0 !important;
     margin: 0 !important;
     border: none !important;
+    display: block !important;
+  }
+  .topbar {
+    border-bottom: 2px solid var(--ink) !important;
+    padding: 10px 0 !important;
+    margin-bottom: 20px !important;
+    position: static !important;
+    background: transparent !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+  }
+  .logo-slot {
+    border: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    cursor: default !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    color: var(--ink) !important;
   }
   .content {
     padding: 0 !important;
@@ -774,12 +799,75 @@ table.data-table tr:last-child td{border-bottom:none;}
   .page.active {
     display: block !important;
   }
-  .card, .cover-hero {
-    border: 1px solid #ddd !important;
+  .cover-hero {
+    padding: 30px 10px !important;
+    border: none !important;
+    text-align: center !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+  }
+  .cover-hero h1 {
+    font-size: 28px !important;
+    line-height: 1.25 !important;
+    margin-top: 15px !important;
+    margin-bottom: 15px !important;
+  }
+  .constellation {
+    margin: 15px auto !important;
+    max-width: 90% !important;
+    height: auto !important;
+  }
+  .grid {
+    display: grid !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+  .kpi-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .cover-strip {
+    grid-template-columns: repeat(4, 1fr) !important;
+    margin-top: 20px !important;
+  }
+  .two-col {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .card {
+    border: 1px solid #E4E6EE !important;
+    border-radius: 8px !important;
+    padding: 14px !important;
     box-shadow: none !important;
     background: white !important;
-    page-break-inside: avoid;
+    page-break-inside: avoid !important;
   }
+  .data-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin-top: 10px !important;
+  }
+  .data-table th, .data-table td {
+    border: 1px solid #E4E6EE !important;
+    padding: 6px 10px !important;
+    font-size: 10px !important;
+  }
+  .chart-wrap {
+    max-height: 180px !important;
+  }
+  canvas {
+    max-width: 100% !important;
+    max-height: 180px !important;
+  }
+}
+
+/* GA4-style Loading Animation */
+.content {
+  transition: opacity 0.25s ease, filter 0.25s ease;
+}
+.content.loading-state {
+  opacity: 0.35;
+  filter: blur(1.5px);
+  pointer-events: none;
 }
 </style>
 </head>
@@ -962,9 +1050,9 @@ table.data-table tr:last-child td{border-bottom:none;}
         </div>
         <div class="grid cover-strip">
           <div class="card kpi"><div class="label">Prompts tracked</div><div class="value">86</div></div>
-          <div class="card kpi"><div class="label">AI citations</div><div class="value">312</div></div>
+          <div class="card kpi platform-dep" id="cover-kpi-citations"><div class="label">AI citations</div><div class="value">312</div></div>
           <div class="card kpi"><div class="label">Brand mentions</div><div class="value">214</div></div>
-          <div class="card kpi"><div class="label">Share of voice</div><div class="value">24%</div></div>
+          <div class="card kpi platform-dep" id="cover-kpi-sov"><div class="label">Share of voice</div><div class="value">24%</div></div>
         </div>
       </section>
 
@@ -973,17 +1061,17 @@ table.data-table tr:last-child td{border-bottom:none;}
         <div class="section-head"><h2>GEO Overview</h2><span class="source-note">Source: Ahrefs Brand Radar + Bing Webmaster Tools</span></div>
         <div class="grid kpi-grid">
           <div class="card kpi"><div class="label">Prompts tracked</div><div class="value">86</div><span class="delta up">▲ 6 new</span></div>
-          <div class="card kpi"><div class="label">AI citations</div><div class="value">312</div><span class="delta up">▲ 18%</span></div>
+          <div class="card kpi platform-dep" id="overview-kpi-citations"><div class="label">AI citations</div><div class="value">312</div><span class="delta up">▲ 18%</span></div>
           <div class="card kpi"><div class="label">Brand mentions</div><div class="value">214</div><span class="delta up">▲ 9%</span></div>
-          <div class="card kpi"><div class="label">Share of voice</div><div class="value">24%</div><span class="delta up">▲ 3 pts</span></div>
-          <div class="card kpi"><div class="label">Avg. citation rank</div><div class="value">2.3</div><span class="delta up">▲ from 2.8</span></div>
+          <div class="card kpi platform-dep" id="overview-kpi-sov"><div class="label">Share of voice</div><div class="value">24%</div><span class="delta up">▲ 3 pts</span></div>
+          <div class="card kpi platform-dep" id="overview-kpi-rank"><div class="label">Avg. citation rank</div><div class="value">2.3</div><span class="delta up">▲ from 2.8</span></div>
         </div>
         <div class="grid two-col">
           <div class="card">
             <p class="chart-title">Citations over time</p>
             <div class="chart-wrap"><canvas id="chartCitTrend"></canvas></div>
           </div>
-          <div class="card">
+          <div class="card platform-dep" id="overview-card-engine-chart">
             <p class="chart-title">Citation share by engine</p>
             <div class="chart-wrap"><canvas id="chartEngineDonut"></canvas></div>
           </div>
@@ -1000,14 +1088,14 @@ table.data-table tr:last-child td{border-bottom:none;}
         </div>
         <div class="card">
           <table class="data-table">
-            <thead><tr><th>Prompt</th><th>Category</th><th>Volume</th><th>Cited by</th><th>Avg. rank</th><th>Trend</th></tr></thead>
+            <thead><tr><th>Prompt</th><th>Category</th><th>Volume</th><th class="col-engines">Cited by</th><th>Avg. rank</th><th>Trend</th></tr></thead>
             <tbody>
-              <tr><td>"best project management software for remote teams"</td><td><span class="tag">Comparison</span></td><td class="mono-num">880</td><td><span class="engine-chip eng-chatgpt">ChatGPT</span><span class="engine-chip eng-perplexity">Perplexity</span></td><td class="mono-num">2.0</td><td class="trend up">▲</td></tr>
-              <tr><td>"top CRM alternatives to Salesforce"</td><td><span class="tag">Competitive</span></td><td class="mono-num">720</td><td><span class="engine-chip eng-perplexity">Perplexity</span><span class="engine-chip eng-gemini">Gemini</span></td><td class="mono-num">3.0</td><td class="trend up">▲</td></tr>
-              <tr><td>"how to manage remote team tasks"</td><td><span class="tag">How-to</span></td><td class="mono-num">1,200</td><td><span class="engine-chip eng-chatgpt">ChatGPT</span><span class="engine-chip eng-copilot">Copilot</span></td><td class="mono-num">1.0</td><td class="trend up">▲</td></tr>
-              <tr><td>"is Client Co. good for small business"</td><td><span class="tag">Branded</span></td><td class="mono-num">310</td><td><span class="engine-chip eng-chatgpt">ChatGPT</span></td><td class="mono-num">1.0</td><td class="trend flat">▬</td></tr>
-              <tr><td>"project management tools with AI features"</td><td><span class="tag">Feature</span></td><td class="mono-num">590</td><td><span class="engine-chip eng-perplexity">Perplexity</span><span class="engine-chip eng-gemini">Gemini</span><span class="engine-chip eng-copilot">Copilot</span></td><td class="mono-num">2.0</td><td class="trend up">▲</td></tr>
-              <tr><td>"affordable alternatives to Asana"</td><td><span class="tag">Competitive</span></td><td class="mono-num">460</td><td><span class="engine-chip eng-chatgpt">ChatGPT</span></td><td class="mono-num">4.0</td><td class="trend down">▼</td></tr>
+              <tr><td>"best project management software for remote teams"</td><td><span class="tag">Comparison</span></td><td class="mono-num">880</td><td class="col-engines"><span class="engine-chip eng-chatgpt">ChatGPT</span><span class="engine-chip eng-perplexity">Perplexity</span></td><td class="mono-num">2.0</td><td class="trend up">▲</td></tr>
+              <tr><td>"top CRM alternatives to Salesforce"</td><td><span class="tag">Competitive</span></td><td class="mono-num">720</td><td class="col-engines"><span class="engine-chip eng-perplexity">Perplexity</span><span class="engine-chip eng-gemini">Gemini</span></td><td class="mono-num">3.0</td><td class="trend up">▲</td></tr>
+              <tr><td>"how to manage remote team tasks"</td><td><span class="tag">How-to</span></td><td class="mono-num">1,200</td><td class="col-engines"><span class="engine-chip eng-chatgpt">ChatGPT</span><span class="engine-chip eng-copilot">Copilot</span></td><td class="mono-num">1.0</td><td class="trend up">▲</td></tr>
+              <tr><td>"is Client Co. good for small business"</td><td><span class="tag">Branded</span></td><td class="mono-num">310</td><td class="col-engines"><span class="engine-chip eng-chatgpt">ChatGPT</span></td><td class="mono-num">1.0</td><td class="trend flat">▬</td></tr>
+              <tr><td>"project management tools with AI features"</td><td><span class="tag">Feature</span></td><td class="mono-num">590</td><td class="col-engines"><span class="engine-chip eng-perplexity">Perplexity</span><span class="engine-chip eng-gemini">Gemini</span><span class="engine-chip eng-copilot">Copilot</span></td><td class="mono-num">2.0</td><td class="trend up">▲</td></tr>
+              <tr><td>"affordable alternatives to Asana"</td><td><span class="tag">Competitive</span></td><td class="mono-num">460</td><td class="col-engines"><span class="engine-chip eng-chatgpt">ChatGPT</span></td><td class="mono-num">4.0</td><td class="trend down">▼</td></tr>
             </tbody>
           </table>
         </div>
@@ -1022,14 +1110,14 @@ table.data-table tr:last-child td{border-bottom:none;}
         </div>
         <div class="card">
           <table class="data-table">
-            <thead><tr><th>Page</th><th>Cluster</th><th>Citations</th><th>Engines</th></tr></thead>
+            <thead><tr><th>Page</th><th>Cluster</th><th>Citations</th><th class="col-engines">Engines</th></tr></thead>
             <tbody>
-              <tr><td>/blog/best-project-management-software-2026</td><td><span class="tag">Comparison</span></td><td class="mono-num">42</td><td><span class="engine-chip eng-chatgpt">ChatGPT</span><span class="engine-chip eng-perplexity">Perplexity</span><span class="engine-chip eng-gemini">Gemini</span></td></tr>
-              <tr><td>/compare/clientco-vs-asana</td><td><span class="tag">Competitive</span></td><td class="mono-num">31</td><td><span class="engine-chip eng-chatgpt">ChatGPT</span><span class="engine-chip eng-copilot">Copilot</span></td></tr>
-              <tr><td>/features/ai-task-automation</td><td><span class="tag">Feature</span></td><td class="mono-num">27</td><td><span class="engine-chip eng-perplexity">Perplexity</span><span class="engine-chip eng-gemini">Gemini</span></td></tr>
-              <tr><td>/guides/remote-team-management</td><td><span class="tag">How-to</span></td><td class="mono-num">24</td><td><span class="engine-chip eng-chatgpt">ChatGPT</span><span class="engine-chip eng-copilot">Copilot</span></td></tr>
-              <tr><td>/pricing</td><td><span class="tag">Branded</span></td><td class="mono-num">18</td><td><span class="engine-chip eng-chatgpt">ChatGPT</span></td></tr>
-              <tr><td>/blog/small-business-pm-tools</td><td><span class="tag">Comparison</span></td><td class="mono-num">15</td><td><span class="engine-chip eng-perplexity">Perplexity</span></td></tr>
+              <tr><td>/blog/best-project-management-software-2026</td><td><span class="tag">Comparison</span></td><td class="mono-num">42</td><td class="col-engines"><span class="engine-chip eng-chatgpt">ChatGPT</span><span class="engine-chip eng-perplexity">Perplexity</span><span class="engine-chip eng-gemini">Gemini</span></td></tr>
+              <tr><td>/compare/clientco-vs-asana</td><td><span class="tag">Competitive</span></td><td class="mono-num">31</td><td class="col-engines"><span class="engine-chip eng-chatgpt">ChatGPT</span><span class="engine-chip eng-copilot">Copilot</span></td></tr>
+              <tr><td>/features/ai-task-automation</td><td><span class="tag">Feature</span></td><td class="mono-num">27</td><td class="col-engines"><span class="engine-chip eng-perplexity">Perplexity</span><span class="engine-chip eng-gemini">Gemini</span></td></tr>
+              <tr><td>/guides/remote-team-management</td><td><span class="tag">How-to</span></td><td class="mono-num">24</td><td class="col-engines"><span class="engine-chip eng-chatgpt">ChatGPT</span><span class="engine-chip eng-copilot">Copilot</span></td></tr>
+              <tr><td>/pricing</td><td><span class="tag">Branded</span></td><td class="mono-num">18</td><td class="col-engines"><span class="engine-chip eng-chatgpt">ChatGPT</span></td></tr>
+              <tr><td>/blog/small-business-pm-tools</td><td><span class="tag">Comparison</span></td><td class="mono-num">15</td><td class="col-engines"><span class="engine-chip eng-perplexity">Perplexity</span></td></tr>
             </tbody>
           </table>
         </div>
@@ -1403,6 +1491,19 @@ function updateChartsForProperty(seed) {
   }
 }
 
+function triggerFilterAnimation(callback) {
+  const content = document.querySelector('.content');
+  if (content) {
+    content.classList.add('loading-state');
+    setTimeout(() => {
+      if (callback) callback();
+      content.classList.remove('loading-state');
+    }, 350);
+  } else {
+    if (callback) callback();
+  }
+}
+
 function applyPropertyData() {
   const prop = document.getElementById('meta-property').value;
   const seed = getPropertySeed(prop);
@@ -1441,7 +1542,10 @@ function saveMetadata() {
     endDate: document.getElementById('date-end').value
   };
   localStorage.setItem('geo_report_meta', JSON.stringify(data));
-  applyPropertyData();
+  
+  triggerFilterAnimation(() => {
+    applyPropertyData();
+  });
   
   if (propVal && currentActiveProperty !== propVal) {
     currentActiveProperty = propVal;
@@ -1490,23 +1594,40 @@ function loadMetadata() {
 function syncUIWithApiKeys() {
   const ahrefs = localStorage.getItem('geo_report_key_ahrefs');
   const gsc = localStorage.getItem('geo_report_key_gsc');
+  const bing = localStorage.getItem('geo_report_key_bing');
   const openai = localStorage.getItem('geo_report_key_openai');
   
-  const promptsTab = document.querySelector('.nav-btn[data-page="prompts"]');
-  const pagesTab = document.querySelector('.nav-btn[data-page="pages"]');
+  // Sidebar tabs - Mentions & Benchmark rely entirely on platform-level citations (Ahrefs)
   const mentionsTab = document.querySelector('.nav-btn[data-page="mentions"]');
   const benchmarkTab = document.querySelector('.nav-btn[data-page="benchmark"]');
   const recsTab = document.querySelector('.nav-btn[data-page="recs"]');
   
-  if (promptsTab) promptsTab.style.display = gsc ? 'flex' : 'none';
-  if (pagesTab) pagesTab.style.display = gsc ? 'flex' : 'none';
   if (mentionsTab) mentionsTab.style.display = ahrefs ? 'flex' : 'none';
   if (benchmarkTab) benchmarkTab.style.display = ahrefs ? 'flex' : 'none';
   if (recsTab) recsTab.style.display = openai ? 'flex' : 'none';
   
+  // Prompts and Pages Cited sidebar tabs are ALWAYS visible since Bing API provides them
+  const promptsTab = document.querySelector('.nav-btn[data-page="prompts"]');
+  const pagesTab = document.querySelector('.nav-btn[data-page="pages"]');
+  if (promptsTab) promptsTab.style.display = 'flex';
+  if (pagesTab) pagesTab.style.display = 'flex';
+
+  // Toggle specific platform-dependent KPI cards and charts
+  const platformElements = document.querySelectorAll('.platform-dep');
+  platformElements.forEach(el => {
+    el.style.display = ahrefs ? '' : 'none';
+  });
+  
+  // Toggle the "Engines / Cited by" column in data tables
+  const colEngines = document.querySelectorAll('.col-engines');
+  colEngines.forEach(col => {
+    col.style.display = ahrefs ? '' : 'none';
+  });
+
+  // Onboarding Warning Banner (displays on Cover page if BOTH GSC and Bing are missing)
   const banner = document.getElementById('onboarding-banner');
   if (banner) {
-    banner.style.display = (!gsc || !ahrefs || !openai) ? 'flex' : 'none';
+    banner.style.display = (!gsc && !bing) ? 'flex' : 'none';
   }
 }
 
