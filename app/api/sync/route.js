@@ -6,7 +6,7 @@ export async function POST(request) {
     const { api, property, key } = body;
     
     if (api === 'ahrefs') {
-      const url = `https://api.ahrefs.com/v3/site-explorer/overview?target=${encodeURIComponent(property)}&output=json`;
+      const url = `https://api.ahrefs.com/v3/site-explorer/metrics?target=${encodeURIComponent(property)}&output=json`;
       const response = await fetch(url, {
         method: 'GET',
         headers: { 'Authorization': `Bearer ${key}` }
@@ -84,7 +84,7 @@ export async function POST(request) {
     }
     
     if (api === 'bing') {
-      const url = `https://ssl.bing.com/webmaster/api.svc/json/GetPageQueryStats?siteUrl=${encodeURIComponent(property)}&apikey=${key}`;
+      const url = `https://ssl.bing.com/webmaster/api.svc/json/GetQueryStats?siteUrl=${encodeURIComponent(property)}&apikey=${key}`;
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`Bing returned status ${response.status}`);

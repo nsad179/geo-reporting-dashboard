@@ -64,6 +64,7 @@ export default function Home() {
   const hasGscOrBing = !!(apiKeys.gsc || apiKeys.bing);
   const hasAhrefs = !!apiKeys.ahrefs;
   const hasOpenai = !!apiKeys.openai;
+  const hasSearchSource = !!(apiKeys.ahrefs || apiKeys.gsc || apiKeys.bing);
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -520,6 +521,118 @@ export default function Home() {
     localStorage.removeItem(`geo_report_api_cache_${prop}`);
   };
 
+  const parseCSV = (text) => {
+    const lines = text.split(/\r?\n/);
+    if (lines.length === 0 || !lines[0]) return [];
+    
+    // Parse header
+    const headers = [];
+    let headerLine = lines[0];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < headerLine.length; i++) {
+      let char = headerLine[i];
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) {
+        headers.push(current.trim().replace(/^["']|["']$/g, ''));
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    headers.push(current.trim().replace(/^["']|["']$/g, ''));
+
+    const result = [];
+    for (let i = 1; i < lines.length; i++) {
+      let line = lines[i];
+      if (!line) continue;
+      
+      let entries = [];
+      current = '';
+      inQuotes = false;
+      for (let j = 0; j < line.length; j++) {
+        let char = line[j];
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          entries.push(current.trim().replace(/^["']|["']$/g, ''));
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      entries.push(current.trim().replace(/^["']|["']$/g, ''));
+      
+      const obj = {};
+      headers.forEach((h, idx) => {
+        obj[h] = entries[idx] || '';
+      });
+      result.push(obj);
+    }
+    return result;
+  };
+
+  const importBingQueriesCSV = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target.result;
+      const parsed = parseCSV(text);
+      
+      const prompts = parsed.map(row => {
+        const query = row['Grounding Query'] || row['query'] || row['Query'] || '';
+        const clicks = parseInt(row['Citations'] || row['citations'] || '0', 10);
+        const share = parseFloat(row['Citation Share'] || row['citation share'] || '0');
+        return {
+          query: query,
+          impressions: Math.round(clicks / (share > 0 ? (share / 100) : 1)) || clicks || 100,
+          clicks: clicks,
+          position: 1.0
+        };
+      }).filter(p => !!p.query);
+      
+      if (prompts.length > 0) {
+        saveApiCache(activeProperty, 'bing_prompts', prompts);
+        addLog(`Bing API: Imported ${prompts.length} grounding queries from CSV for ${activeProperty}!`, 'success');
+        triggerFilterTransition();
+        alert(`Successfully imported ${prompts.length} grounding queries!`);
+      } else {
+        alert("No valid grounding queries found in CSV. Please verify column headers match: Grounding Query, Citations, Citation Share.");
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const importBingPagesCSV = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target.result;
+      const parsed = parseCSV(text);
+      
+      const pages = parsed.map(row => {
+        const page = row['Page'] || row['page'] || '';
+        const clicks = parseInt(row['Citations'] || row['citations'] || '0', 10);
+        return {
+          page: page,
+          clicks: clicks,
+          impressions: clicks * 5
+        };
+      }).filter(p => !!p.page);
+      
+      if (pages.length > 0) {
+        saveApiCache(activeProperty, 'gsc_pages', pages);
+        addLog(`Bing API: Imported ${pages.length} cited pages from CSV for ${activeProperty}!`, 'success');
+        triggerFilterTransition();
+        alert(`Successfully imported ${pages.length} cited pages!`);
+      } else {
+        alert("No valid cited pages found in CSV. Please verify column headers match: Page, Citations.");
+      }
+    };
+    reader.readAsText(file);
+  };
+
   // Client/Agency Logo Uploads
   const handleClientLogoUpload = (e) => {
     const file = e.target.files[0];
@@ -710,15 +823,28 @@ export default function Home() {
   const getCachedPromptsList = () => {
     const cache = getApiCache(activeProperty, "gsc_prompts") || getApiCache(activeProperty, "bing_prompts");
     if (cache && cache.length > 0) return cache;
-    // Fallback scaled demo data
-    const list = [
-      { query: "best project management software for remote teams", impressions: 880, clicks: 45, position: 2.0 },
-      { query: "top CRM alternatives to Salesforce", impressions: 720, clicks: 35, position: 3.0 },
-      { query: "how to manage remote team tasks", impressions: 1200, clicks: 75, position: 1.0 },
-      { query: `is ${brand} good for small business`, impressions: 310, clicks: 15, position: 1.0 },
-      { query: "project management tools with AI features", impressions: 590, clicks: 28, position: 2.0 },
-      { query: `affordable alternatives to Asana`, impressions: 460, clicks: 22, position: 4.0 }
-    ];
+    
+    let list = [];
+    if (activeProperty.toLowerCase().includes("betterrhodes")) {
+      list = [
+        { query: "best non alcoholic drinks online", impressions: 880, clicks: 45, position: 2.0 },
+        { query: "top alcohol free beers 2026", impressions: 720, clicks: 35, position: 3.0 },
+        { query: "where to buy non alcoholic wine", impressions: 1200, clicks: 75, position: 1.0 },
+        { query: `is ${brand} good for mindful drinking`, impressions: 310, clicks: 15, position: 1.0 },
+        { query: "non alcoholic spirits alternatives", impressions: 590, clicks: 28, position: 2.0 },
+        { query: "affordable alternatives to traditional wine", impressions: 460, clicks: 22, position: 4.0 }
+      ];
+    } else {
+      list = [
+        { query: "best project management software for remote teams", impressions: 880, clicks: 45, position: 2.0 },
+        { query: "top CRM alternatives to Salesforce", impressions: 720, clicks: 35, position: 3.0 },
+        { query: "how to manage remote team tasks", impressions: 1200, clicks: 75, position: 1.0 },
+        { query: `is ${brand} good for small business`, impressions: 310, clicks: 15, position: 1.0 },
+        { query: "project management tools with AI features", impressions: 590, clicks: 28, position: 2.0 },
+        { query: "affordable alternatives to Asana", impressions: 460, clicks: 22, position: 4.0 }
+      ];
+    }
+
     return list.map(item => ({
       ...item,
       impressions: item.impressions * seed,
@@ -730,14 +856,28 @@ export default function Home() {
   const getCachedPagesList = () => {
     const cache = getApiCache(activeProperty, "gsc_pages");
     if (cache && cache.length > 0) return cache;
-    const list = [
-      { page: "/blog/best-project-management-software-2026", clicks: 42 },
-      { page: `/compare/${brand.toLowerCase()}-vs-asana`, clicks: 31 },
-      { page: "/features/ai-task-automation", clicks: 27 },
-      { page: "/guides/remote-team-management", clicks: 24 },
-      { page: "/pricing", clicks: 18 },
-      { page: "/blog/small-business-pm-tools", clicks: 15 }
-    ];
+    
+    let list = [];
+    if (activeProperty.toLowerCase().includes("betterrhodes")) {
+      list = [
+        { page: "/blog/best-non-alcoholic-beverages-2026", clicks: 42 },
+        { page: `/collections/wander-and-found-wines`, clicks: 31 },
+        { page: "/products/non-alcoholic-spirits", clicks: 27 },
+        { page: "/guides/mindful-drinking-for-beginners", clicks: 24 },
+        { page: "/pricing", clicks: 18 },
+        { page: "/blog/top-non-alcoholic-beers-market-share", clicks: 15 }
+      ];
+    } else {
+      list = [
+        { page: "/blog/best-project-management-software-2026", clicks: 42 },
+        { page: `/compare/${brand.toLowerCase()}-vs-asana`, clicks: 31 },
+        { page: "/features/ai-task-automation", clicks: 27 },
+        { page: "/guides/remote-team-management", clicks: 24 },
+        { page: "/pricing", clicks: 18 },
+        { page: "/blog/small-business-pm-tools", clicks: 15 }
+      ];
+    }
+
     return list.map(item => ({
       ...item,
       clicks: Math.round(item.clicks * seed)
@@ -982,10 +1122,10 @@ export default function Home() {
             </div>
             
             <div className="grid cover-strip">
-              <div className="card kpi"><div class="label">Prompts tracked</div><div class="value">{getPromptsTotal()}</div></div>
-              <div className={`card kpi ${hasAhrefs ? "" : "platform-dep"}`} style={{ display: hasAhrefs ? "block" : "none" }}><div class="label">AI citations</div><div class="value">{getCitationsTotal()}</div></div>
-              <div className="card kpi"><div class="label">Brand mentions</div><div class="value">{getBacklinksTotal()}</div></div>
-              <div className={`card kpi ${hasAhrefs ? "" : "platform-dep"}`} style={{ display: hasAhrefs ? "block" : "none" }}><div class="label">Share of voice</div><div class="value">{Math.round(24 * seed)}%</div></div>
+              <div className="card kpi"><div className="label">Prompts tracked</div><div className="value">{getPromptsTotal()}</div></div>
+              <div className="card kpi" style={{ display: hasSearchSource ? "block" : "none" }}><div className="label">AI citations</div><div className="value">{getCitationsTotal().toLocaleString()}</div></div>
+              <div className="card kpi"><div className="label">Brand mentions</div><div className="value">{getBacklinksTotal().toLocaleString()}</div></div>
+              <div className="card kpi" style={{ display: hasAhrefs ? "block" : "none" }}><div className="label">Share of voice</div><div className="value">{Math.round(24 * seed)}%</div></div>
             </div>
           </section>
 
@@ -995,10 +1135,14 @@ export default function Home() {
             
             <div className="grid kpi-grid">
               <div className="card kpi"><div className="label">Prompts tracked</div><div className="value">{getPromptsTotal()}</div><span className="delta up">▲ 6 new</span></div>
-              <div className="card kpi platform-dep" style={{ display: hasAhrefs ? "block" : "none" }}><div className="label">AI citations</div><div className="value">{getCitationsTotal()}</div><span className="delta up">▲ 18%</span></div>
-              <div className="card kpi"><div className="label">Brand mentions</div><div className="value">{getBacklinksTotal()}</div><span className="delta up">▲ 9%</span></div>
-              <div className="card kpi platform-dep" style={{ display: hasAhrefs ? "block" : "none" }}><div className="label">Share of voice</div><div className="value">{Math.round(24 * seed)}%</div><span className="delta up">▲ 3 pts</span></div>
-              <div className="card kpi platform-dep" style={{ display: hasAhrefs ? "block" : "none" }}><div className="label">Avg. citation rank</div><div className="value">{(2.3 + (seed - 1) * -0.5).toFixed(1)}</div><span className="delta up">▲ from 2.8</span></div>
+              <div className="card kpi" style={{ display: hasSearchSource ? "block" : "none" }}><div className="label">AI citations</div><div className="value">{getCitationsTotal().toLocaleString()}</div><span className="delta up">▲ 18%</span></div>
+              <div className="card kpi"><div className="label">Brand mentions</div><div className="value">{getBacklinksTotal().toLocaleString()}</div><span className="delta up">▲ 9%</span></div>
+              <div className="card kpi" style={{ display: hasAhrefs ? "block" : "none" }}><div className="label">Share of voice</div><div className="value">{Math.round(24 * seed)}%</div><span className="delta up">▲ 3 pts</span></div>
+              <div className="card kpi" style={{ display: hasSearchSource ? "block" : "none" }}>
+                <div className="label">{hasAhrefs ? "Avg. citation rank" : "Avg. cited pages"}</div>
+                <div className="value">{hasAhrefs ? (2.3 + (seed - 1) * -0.5).toFixed(1) : (activeProperty.toLowerCase().includes("betterrhodes") ? 19 : Math.round(14 * seed))}</div>
+                <span className="delta up">{hasAhrefs ? "▲ from 2.8" : "▲ from 12"}</span>
+              </div>
             </div>
             
             <div className="grid two-col">
@@ -1304,6 +1448,22 @@ export default function Home() {
                         [{log.time}] {log.text}
                       </div>
                     ))}
+                  </div>
+                </div>
+
+                <div className="card" style={{ marginTop: "18px" }}>
+                  <h3 style={{ margin: "0 0 16px 0", fontSize: "14px", fontWeight: "600", textTransform: "uppercase" }}>Import Bing AI Performance CSV</h3>
+                  <p style={{ fontSize: "12.5px", color: "var(--ink-soft)", marginTop: 0, marginBottom: "12px", lineHeight: "1.45" }}>
+                    Upload your Grounding Queries and Cited Pages CSV files directly from Microsoft Bing Webmaster Tools to view actual metrics offline.
+                  </p>
+                  
+                  <div style={{ marginBottom: "12px" }}>
+                    <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "var(--ink-soft)", marginBottom: "5px" }}>GROUNDING QUERIES CSV</label>
+                    <input type="file" accept=".csv" className="form-control" style={{ fontSize: "12px", padding: "6px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "6px", width: "100%", cursor: "pointer" }} onChange={(e) => importBingQueriesCSV(e.target.files[0])} />
+                  </div>
+                  <div style={{ marginBottom: "12px" }}>
+                    <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "var(--ink-soft)", marginBottom: "5px" }}>CITED PAGES CSV</label>
+                    <input type="file" accept=".csv" className="form-control" style={{ fontSize: "12px", padding: "6px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "6px", width: "100%", cursor: "pointer" }} onChange={(e) => importBingPagesCSV(e.target.files[0])} />
                   </div>
                 </div>
               </div>
