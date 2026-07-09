@@ -1170,6 +1170,16 @@ function showPage(id){
 }
 
 function baseOpts(extra){
+  return Object.assign({
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{labels:{font:{family:'Inter',size:11},color:'#666B7D'}}},
+    scales:{
+      x:{grid:{display:false},ticks:{font:{family:'IBM Plex Mono',size:10},color:'#9BA0B0'}},
+      y:{grid:{color:'#EEEFF5'},ticks:{font:{family:'IBM Plex Mono',size:10},color:'#9BA0B0'}}
+    }
+  }, extra||{});
+}
+
 function initCharts(id){
   const prop = document.getElementById('meta-property').value;
   const seed = getPropertySeed(prop);
