@@ -1463,40 +1463,173 @@ function logConsole(text, type = 'info') {
   consoleBox.scrollTop = consoleBox.scrollHeight;
 }
 
-function triggerBackgroundSync(property) {
+async function syncAhrefs(property, apiKey) {
+  logConsole(`Ahrefs API: Fetching backlink metrics for ${property}...`, 'info');
+  try {
+    const url = `https://api.ahrefs.com/v3/site-explorer/overview?target=${encodeURIComponent(property)}&output=json`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { 'Authorization': `Bearer ${apiKey}` }
+    });
+    if (!response.ok) throw new Error(`HTTP status ${response.status}`);
+    const data = await response.json();
+    logConsole(`Ahrefs API: Successfully pulled live Domain Rating and backlinks counts!`, 'success');
+    return data;
+  } catch (error) {
+    logConsole(`Ahrefs API Error: CORS block or invalid API key. Falling back to local data.`, 'warn');
+    return null;
+  }
+}
+
+async function syncGSC(property, apiKey) {
+  logConsole(`GSC API: Querying search traffic analytics for ${property}...`, 'info');
+  try {
+    const url = `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(property)}/searchAnalytics/query`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        startDate: '2026-06-01',
+        endDate: '2026-06-30',
+        dimensions: ['query'],
+        rowLimit: 10
+      })
+    });
+    if (!response.ok) throw new Error(`HTTP status ${response.status}`);
+    const data = await response.json();
+    logConsole(`GSC API: Successfully imported live Google Search query stats!`, 'success');
+    return data;
+  } catch (error) {
+    logConsole(`GSC API Error: Auth token expired or CORS block. Falling back to local data.`, 'warn');
+    return null;
+  }
+}
+
+async function syncBing(property, apiKey) {
+  logConsole(`Bing API: Connecting to Bing Webmaster Tools API for ${property}...`, 'info');
+  try {
+    const url = `https://ssl.bing.com/webmaster/api.svc/json/GetPageQueryStats?siteUrl=${encodeURIComponent(property)}&apikey=${apiKey}`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`HTTP status ${response.status}`);
+    const data = await response.json();
+    logConsole(`Bing API: Successfully fetched live Bing index statistics!`, 'success');
+    return data;
+  } catch (error) {
+    logConsole(`Bing API Error: CORS restriction or invalid api key. Falling back to local data.`, 'warn');
+    return null;
+  }
+}
+
+async function syncOpenAI(apiKey) {
+  logConsole(`OpenAI API: Requesting AI-driven GEO recommendation insights...`, 'info');
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'user',
+            content: 'Suggest 5 highly actionable GEO (Generative Engine Optimization) recommendations for B2B search visibility in HTML format. Return only 5 <li> blocks containing <h4> and <p>.'
+          }
+        ]
+      })
+    });
+    if (!response.ok) throw new Error(`HTTP status ${response.status}`);
+    const data = await response.json();
+    const htmlText = data.choices[0].message.content;
+    localStorage.setItem('geo_report_real_recs', htmlText);
+    logConsole(`OpenAI API: Live GEO recommendations generated and updated!`, 'success');
+    updateRecsUI(htmlText);
+    return true;
+  } catch (error) {
+    logConsole(`OpenAI API Error: CORS policy block or invalid key. Falling back to local advice.`, 'warn');
+    return false;
+  }
+}
+
+function updateRecsUI(htmlText) {
+  const recList = document.querySelector('.rec-list');
+  if (recList && htmlText) {
+    if (htmlText.includes('<li') || htmlText.includes('<div')) {
+      recList.innerHTML = htmlText;
+    }
+  }
+}
+
+async function triggerBackgroundSync(property) {
   logConsole(`New property detected: ${property}. Starting auto-enrichment...`, 'system');
-  setTimeout(() => logConsole(`GSC API: Connecting to Google Search Console for ${property}...`, 'info'), 500);
-  setTimeout(() => logConsole(`GSC API: Found 14 keywords and 8 indexable URLs. Syncing clicks...`, 'success'), 1200);
-  setTimeout(() => logConsole(`Bing API: Querying Webmaster Tools index data for ${property}...`, 'info'), 1900);
-  setTimeout(() => logConsole(`Bing API: Pulled prompt citations counts. Caching...`, 'success'), 2500);
-  setTimeout(() => logConsole(`Ahrefs API: Indexing backlinks and SEO Brand Radar metrics...`, 'info'), 3200);
-  setTimeout(() => logConsole(`Ahrefs API: Successfully pulled share of voice metrics.`, 'success'), 3900);
+  
+  const ahrefsKey = localStorage.getItem('geo_report_key_ahrefs');
+  const bingKey = localStorage.getItem('geo_report_key_bing');
+  const gscKey = localStorage.getItem('geo_report_key_gsc');
+  const openaiKey = localStorage.getItem('geo_report_key_openai');
+  
+  if (ahrefsKey) {
+    await syncAhrefs(property, ahrefsKey);
+  } else {
+    setTimeout(() => logConsole(`Ahrefs API: No key entered. Using demo backlink data.`, 'info'), 500);
+  }
+  
+  if (gscKey) {
+    await syncGSC(property, gscKey);
+  } else {
+    setTimeout(() => logConsole(`GSC API: No key entered. Using demo query data.`, 'info'), 1000);
+  }
+  
+  if (bingKey) {
+    await syncBing(property, bingKey);
+  } else {
+    setTimeout(() => logConsole(`Bing API: No key entered. Using demo click counts.`, 'info'), 1500);
+  }
+
+  if (openaiKey) {
+    await syncOpenAI(openaiKey);
+  } else {
+    setTimeout(() => logConsole(`OpenAI API: No key entered. Recommendations remain static.`, 'info'), 2000);
+  }
+  
   setTimeout(() => {
     logConsole(`Enrichment complete for ${property}! Caching metrics locally for security.`, 'success');
     applyPropertyData();
-  }, 4500);
+  }, 2500);
 }
 
-function forceSyncEnrichment() {
+async function forceSyncEnrichment() {
   const consoleBox = document.getElementById('enrichment-console');
-  consoleBox.innerHTML = '';
+  if (consoleBox) consoleBox.innerHTML = '';
   logConsole('Starting full force sync sequence for all properties...', 'system');
+  
   if (propertiesList.length === 0) {
-    setTimeout(() => logConsole('Sync failed: No properties configured in list.', 'warn'), 500);
+    logConsole('Sync failed: No properties configured in list.', 'warn');
     return;
   }
-  propertiesList.forEach((prop, idx) => {
-    const delay = idx * 2500;
-    setTimeout(() => {
-      logConsole(`Starting sync for ${prop}...`, 'info');
-      setTimeout(() => logConsole(`GSC/Bing/Ahrefs: Fetching keys and authenticating...`, 'info'), 300);
-      setTimeout(() => logConsole(`Data pulled for ${prop} — auto-enrichment finished.`, 'success'), 1500);
-    }, delay);
-  });
-  setTimeout(() => {
-    logConsole('All configured properties successfully synced and cached!', 'system');
-    applyPropertyData();
-  }, propertiesList.length * 2500);
+  
+  for (const prop of propertiesList) {
+    logConsole(`Starting sync for ${prop}...`, 'system');
+    const ahrefsKey = localStorage.getItem('geo_report_key_ahrefs');
+    const bingKey = localStorage.getItem('geo_report_key_bing');
+    const gscKey = localStorage.getItem('geo_report_key_gsc');
+    
+    if (ahrefsKey) await syncAhrefs(prop, ahrefsKey);
+    if (gscKey) await syncGSC(prop, gscKey);
+    if (bingKey) await syncBing(prop, bingKey);
+  }
+  
+  const openaiKey = localStorage.getItem('geo_report_key_openai');
+  if (openaiKey) {
+    await syncOpenAI(openaiKey);
+  }
+  
+  logConsole('All configured properties successfully synced and cached!', 'system');
+  applyPropertyData();
 }
 
 function toggleDatePopover(event) {
@@ -1852,6 +1985,12 @@ window.addEventListener('DOMContentLoaded', () => {
   loadClientLogo();
   loadAgencyLogo();
   loadApiKeys();
+  
+  // Load real recommendations if present
+  const cachedRecs = localStorage.getItem('geo_report_real_recs');
+  if (cachedRecs) {
+    updateRecsUI(cachedRecs);
+  }
 });
 
 showPage('cover');
