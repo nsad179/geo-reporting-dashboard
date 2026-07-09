@@ -521,117 +521,7 @@ export default function Home() {
     localStorage.removeItem(`geo_report_api_cache_${prop}`);
   };
 
-  const parseCSV = (text) => {
-    const lines = text.split(/\r?\n/);
-    if (lines.length === 0 || !lines[0]) return [];
-    
-    // Parse header
-    const headers = [];
-    let headerLine = lines[0];
-    let current = '';
-    let inQuotes = false;
-    for (let i = 0; i < headerLine.length; i++) {
-      let char = headerLine[i];
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === ',' && !inQuotes) {
-        headers.push(current.trim().replace(/^["']|["']$/g, ''));
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-    headers.push(current.trim().replace(/^["']|["']$/g, ''));
 
-    const result = [];
-    for (let i = 1; i < lines.length; i++) {
-      let line = lines[i];
-      if (!line) continue;
-      
-      let entries = [];
-      current = '';
-      inQuotes = false;
-      for (let j = 0; j < line.length; j++) {
-        let char = line[j];
-        if (char === '"') {
-          inQuotes = !inQuotes;
-        } else if (char === ',' && !inQuotes) {
-          entries.push(current.trim().replace(/^["']|["']$/g, ''));
-          current = '';
-        } else {
-          current += char;
-        }
-      }
-      entries.push(current.trim().replace(/^["']|["']$/g, ''));
-      
-      const obj = {};
-      headers.forEach((h, idx) => {
-        obj[h] = entries[idx] || '';
-      });
-      result.push(obj);
-    }
-    return result;
-  };
-
-  const importBingQueriesCSV = (file) => {
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target.result;
-      const parsed = parseCSV(text);
-      
-      const prompts = parsed.map(row => {
-        const query = row['Grounding Query'] || row['query'] || row['Query'] || '';
-        const clicks = parseInt(row['Citations'] || row['citations'] || '0', 10);
-        const share = parseFloat(row['Citation Share'] || row['citation share'] || '0');
-        return {
-          query: query,
-          impressions: Math.round(clicks / (share > 0 ? (share / 100) : 1)) || clicks || 100,
-          clicks: clicks,
-          position: 1.0
-        };
-      }).filter(p => !!p.query);
-      
-      if (prompts.length > 0) {
-        saveApiCache(activeProperty, 'bing_prompts', prompts);
-        addLog(`Bing API: Imported ${prompts.length} grounding queries from CSV for ${activeProperty}!`, 'success');
-        triggerFilterTransition();
-        alert(`Successfully imported ${prompts.length} grounding queries!`);
-      } else {
-        alert("No valid grounding queries found in CSV. Please verify column headers match: Grounding Query, Citations, Citation Share.");
-      }
-    };
-    reader.readAsText(file);
-  };
-
-  const importBingPagesCSV = (file) => {
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target.result;
-      const parsed = parseCSV(text);
-      
-      const pages = parsed.map(row => {
-        const page = row['Page'] || row['page'] || '';
-        const clicks = parseInt(row['Citations'] || row['citations'] || '0', 10);
-        return {
-          page: page,
-          clicks: clicks,
-          impressions: clicks * 5
-        };
-      }).filter(p => !!p.page);
-      
-      if (pages.length > 0) {
-        saveApiCache(activeProperty, 'gsc_pages', pages);
-        addLog(`Bing API: Imported ${pages.length} cited pages from CSV for ${activeProperty}!`, 'success');
-        triggerFilterTransition();
-        alert(`Successfully imported ${pages.length} cited pages!`);
-      } else {
-        alert("No valid cited pages found in CSV. Please verify column headers match: Page, Citations.");
-      }
-    };
-    reader.readAsText(file);
-  };
 
   // Client/Agency Logo Uploads
   const handleClientLogoUpload = (e) => {
@@ -1451,21 +1341,7 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className="card" style={{ marginTop: "18px" }}>
-                  <h3 style={{ margin: "0 0 16px 0", fontSize: "14px", fontWeight: "600", textTransform: "uppercase" }}>Import Bing AI Performance CSV</h3>
-                  <p style={{ fontSize: "12.5px", color: "var(--ink-soft)", marginTop: 0, marginBottom: "12px", lineHeight: "1.45" }}>
-                    Upload your Grounding Queries and Cited Pages CSV files directly from Microsoft Bing Webmaster Tools to view actual metrics offline.
-                  </p>
-                  
-                  <div style={{ marginBottom: "12px" }}>
-                    <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "var(--ink-soft)", marginBottom: "5px" }}>GROUNDING QUERIES CSV</label>
-                    <input type="file" accept=".csv" className="form-control" style={{ fontSize: "12px", padding: "6px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "6px", width: "100%", cursor: "pointer" }} onChange={(e) => importBingQueriesCSV(e.target.files[0])} />
-                  </div>
-                  <div style={{ marginBottom: "12px" }}>
-                    <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "var(--ink-soft)", marginBottom: "5px" }}>CITED PAGES CSV</label>
-                    <input type="file" accept=".csv" className="form-control" style={{ fontSize: "12px", padding: "6px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "6px", width: "100%", cursor: "pointer" }} onChange={(e) => importBingPagesCSV(e.target.files[0])} />
-                  </div>
-                </div>
+
               </div>
             </div>
           </section>
