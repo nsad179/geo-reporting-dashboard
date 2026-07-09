@@ -270,8 +270,63 @@ table.data-table tr:last-child td{border-bottom:none;}
   background-color: var(--accent-soft);
   color: var(--accent);
 }
-.dropdown.show .dropdown-content {
+.dropdown.show .dropdown-content, .dropdown-content.show {
   display: block;
+}
+
+/* Onboarding Warning Banner */
+.onboarding-banner {
+  background: linear-gradient(135deg, #EEECFC 0%, #E1F6F8 100%);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  box-shadow: 0 4px 15px rgba(91, 79, 224, 0.03);
+}
+.onboarding-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.onboarding-banner-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.onboarding-banner-text h4 {
+  margin: 0 0 3px 0;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.onboarding-banner-text p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-soft);
+  line-height: 1.45;
+}
+.onboarding-banner-btn {
+  background-color: var(--accent);
+  color: white;
+  border: none;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 11.5px;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s;
+}
+.onboarding-banner-btn:hover {
+  background-color: #4b3ec0;
 }
 
 /* GA4 Date Picker Popover */
@@ -778,7 +833,7 @@ table.data-table tr:last-child td{border-bottom:none;}
     </button>
     <div class="sidebar-footer" id="sidebar-footer-sources">Connected sources:<br>Ahrefs Brand Radar · Bing Webmaster Tools</div>
     <div class="sidebar-branding">
-      made with love by <a href="https://www.linkedin.com/in/neeraj179/" target="_blank">Neeraj Kumar</a>
+      made with love ❤️ by <a href="https://www.linkedin.com/in/neeraj179/" target="_blank">Neeraj Kumar</a>
     </div>
   </nav>
 
@@ -860,6 +915,17 @@ table.data-table tr:last-child td{border-bottom:none;}
 
       <!-- ============ PAGE 1: COVER ============ -->
       <section class="page active" id="cover">
+        <!-- Onboarding Warning Banner -->
+        <div class="onboarding-banner" id="onboarding-banner" style="display:none;">
+          <div class="onboarding-banner-content">
+            <svg class="onboarding-banner-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <div class="onboarding-banner-text">
+              <h4>Setup Required: Connect API Keys</h4>
+              <p>Connect Google Search Console, Ahrefs, and OpenAI keys under Settings to unlock detailed reports (Prompts, Cited Pages, Mentions, SOV, and AI Recommendations).</p>
+            </div>
+          </div>
+          <button class="onboarding-banner-btn" onclick="showPage('settings')">Connect API Keys</button>
+        </div>
         <div class="cover-hero">
           <div class="eyebrow">GEO Performance Report</div>
           <h1>How Client Co. shows up<br>across AI answer engines</h1>
@@ -1360,12 +1426,14 @@ function applyPropertyData() {
   updateChartsForProperty(seed);
 }
 
+let currentActiveProperty = '';
 function saveMetadata() {
+  const propVal = document.getElementById('meta-property').value;
   const data = {
     reportTitle: document.getElementById('meta-report-title').innerText.trim(),
     clientName: document.getElementById('meta-client-name').innerText.trim(),
     preparedBy: document.getElementById('meta-prepared-by').innerText.trim(),
-    activeProperty: document.getElementById('meta-property').value,
+    activeProperty: propVal,
     dateRangeText: document.getElementById('meta-date-range-text').innerText.trim(),
     selectedPreset: document.getElementById('date-range-btn').dataset.preset || '28d',
     startDate: document.getElementById('date-start').value,
@@ -1373,6 +1441,11 @@ function saveMetadata() {
   };
   localStorage.setItem('geo_report_meta', JSON.stringify(data));
   applyPropertyData();
+  
+  if (propVal && currentActiveProperty !== propVal) {
+    currentActiveProperty = propVal;
+    triggerBackgroundSync(propVal);
+  }
 }
 
 function loadMetadata() {
@@ -1392,10 +1465,17 @@ function loadMetadata() {
       }
       if (data.startDate) document.getElementById('date-start').value = data.startDate;
       if (data.endDate) document.getElementById('date-end').value = data.endDate;
+      
       setTimeout(() => {
         if (data.activeProperty) {
           document.getElementById('meta-property').value = data.activeProperty;
+          currentActiveProperty = data.activeProperty;
           applyPropertyData();
+          
+          const hasKeys = ['ahrefs', 'bing', 'gsc', 'openai'].some(id => localStorage.getItem(`geo_report_key_${id}`));
+          if (hasKeys) {
+            triggerBackgroundSync(data.activeProperty);
+          }
         }
       }, 50);
     } catch(e) {
@@ -1403,6 +1483,29 @@ function loadMetadata() {
     }
   } else {
     selectDatePreset('28d');
+  }
+}
+
+function syncUIWithApiKeys() {
+  const ahrefs = localStorage.getItem('geo_report_key_ahrefs');
+  const gsc = localStorage.getItem('geo_report_key_gsc');
+  const openai = localStorage.getItem('geo_report_key_openai');
+  
+  const promptsTab = document.querySelector('.nav-btn[data-page="prompts"]');
+  const pagesTab = document.querySelector('.nav-btn[data-page="pages"]');
+  const mentionsTab = document.querySelector('.nav-btn[data-page="mentions"]');
+  const benchmarkTab = document.querySelector('.nav-btn[data-page="benchmark"]');
+  const recsTab = document.querySelector('.nav-btn[data-page="recs"]');
+  
+  if (promptsTab) promptsTab.style.display = gsc ? 'flex' : 'none';
+  if (pagesTab) pagesTab.style.display = gsc ? 'flex' : 'none';
+  if (mentionsTab) mentionsTab.style.display = ahrefs ? 'flex' : 'none';
+  if (benchmarkTab) benchmarkTab.style.display = ahrefs ? 'flex' : 'none';
+  if (recsTab) recsTab.style.display = openai ? 'flex' : 'none';
+  
+  const banner = document.getElementById('onboarding-banner');
+  if (banner) {
+    banner.style.display = (!gsc || !ahrefs || !openai) ? 'flex' : 'none';
   }
 }
 
@@ -1819,6 +1922,7 @@ function saveApiKeys() {
     }
   });
   syncConnectedSources();
+  syncUIWithApiKeys();
   alert('Configurations saved successfully!');
   if (propertiesList.length > 0) {
     forceSyncEnrichment();
@@ -1834,9 +1938,11 @@ function clearApiKeys() {
     });
     localStorage.removeItem('geo_report_client_logo');
     localStorage.removeItem('geo_report_agency_logo');
+    localStorage.removeItem('geo_report_real_recs');
     updateClientLogoDOM(null);
     updateAgencyLogoDOM(null);
     syncConnectedSources();
+    syncUIWithApiKeys();
   }
 }
 
@@ -1995,6 +2101,7 @@ window.addEventListener('DOMContentLoaded', () => {
   loadClientLogo();
   loadAgencyLogo();
   loadApiKeys();
+  syncUIWithApiKeys();
   
   // Load real recommendations if present
   const cachedRecs = localStorage.getItem('geo_report_real_recs');
