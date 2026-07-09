@@ -785,10 +785,17 @@ table.data-table tr:last-child td{border-bottom:none;}
     max-width: 100% !important;
   }
   .page {
-    display: none !important;
-  }
-  .page.active {
     display: block !important;
+    page-break-after: always !important;
+    margin-bottom: 20px !important;
+    padding-top: 10px !important;
+  }
+  .page[style*="display: none"] {
+    display: block !important; /* Force all tabs to show in PDF */
+  }
+  /* Hide the settings page from print */
+  .page:last-child { 
+    display: none !important; 
   }
   .cover-hero {
     padding: 30px 10px !important;

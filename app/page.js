@@ -662,23 +662,58 @@ export default function Home() {
   // Exporters
   const handleExportPDF = () => {
     setIsExportOpen(false);
+    handleExportCSV(); // Auto-download consolidated CSV along with PDF
     if (typeof window !== "undefined") {
-      window.print();
+      setTimeout(() => { window.print(); }, 500); // Small delay to let CSV trigger first
     }
   };
 
   const handleExportCSV = () => {
     setIsExportOpen(false);
-    const { title, headers, rows } = getActiveTableData();
+    
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += headers.map(h => `"${h.replace(/"/g, '""')}"`).join(",") + "\r\n";
-    rows.forEach(row => {
-      csvContent += row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(",") + "\r\n";
-    });
+    
+    // KPI Section
+    csvContent += "=== KPI SUMMARY ===\r\n";
+    csvContent += "AI Citations,Brand Mentions\r\n";
+    csvContent += `"${getCitationsTotal().toString()}","${getBacklinksTotal().toString()}"\r\n\r\n`;
+
+    // Prompts Section
+    csvContent += "=== GROUNDING QUERIES (BING) ===\r\n";
+    csvContent += "Grounding Query,Intent,Topic,Citations,Citation Share\r\n";
+    const prompts = getCachedPromptsList();
+    if (prompts.length > 0) {
+      prompts.forEach(p => {
+        const query = p['Grounding Query'] || p['query'] || '';
+        const intent = p['Intent'] || 'Informational';
+        const topic = p['Topic'] || 'General';
+        const citations = p['Citations'] || p['impressions'] || 0;
+        const share = p['Citation Share'] || '0%';
+        csvContent += `"${query.replace(/"/g, '""')}","${intent}","${topic}","${citations}","${share}"\r\n`;
+      });
+    } else {
+      csvContent += "No data available\r\n";
+    }
+    csvContent += "\r\n";
+
+    // Pages Section
+    csvContent += "=== PAGES CITED ===\r\n";
+    csvContent += "Page,Citations\r\n";
+    const pages = getCachedPagesList();
+    if (pages.length > 0) {
+      pages.forEach(p => {
+        const page = p['Page'] || p['page'] || '';
+        const citations = p['Citations'] || p['clicks'] || 0;
+        csvContent += `"${page.replace(/"/g, '""')}","${citations}"\r\n`;
+      });
+    } else {
+      csvContent += "No data available\r\n";
+    }
+
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `${title}.csv`);
+    link.setAttribute("download", `Consolidated_GEO_Report_${activeProperty.replace(/[^a-z0-9]/gi, '_')}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
