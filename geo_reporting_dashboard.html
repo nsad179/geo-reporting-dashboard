@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>GEO Performance Report — Client Co.</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+:root{
+  --bg:#F5F6FA;
+  --surface:#FFFFFF;
+  --ink:#161925;
+  --ink-soft:#666B7D;
+  --ink-faint:#9BA0B0;
+  --accent:#5B4FE0;
+  --accent-soft:#EEECFC;
+  --cyan:#00AEC0;
+  --cyan-soft:#E1F6F8;
+  --positive:#1E9E64;
+  --positive-soft:#E4F6ED;
+  --negative:#D8483D;
+  --negative-soft:#FBEAE8;
+  --border:#E4E6EE;
+  --radius:14px;
+  --font-display:'Space Grotesk',sans-serif;
+  --font-body:'Inter',sans-serif;
+  --font-mono:'IBM Plex Mono',monospace;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);}
+.shell{display:flex;min-height:100vh;}
+
+/* ---------- SIDEBAR ---------- */
+.sidebar{
+  width:216px;flex-shrink:0;background:var(--surface);
+  border-right:1px solid var(--border);
+  padding:22px 14px;display:flex;flex-direction:column;gap:2px;
+}
+.sidebar .brandmark{
+  font-family:var(--font-display);font-weight:700;font-size:14px;letter-spacing:.02em;
+  color:var(--ink);padding:0 10px 20px 10px;display:flex;align-items:center;gap:8px;
+}
+.sidebar .brandmark .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px var(--accent-soft);}
+.nav-label{font:600 10px var(--font-mono);letter-spacing:.12em;color:var(--ink-faint);text-transform:uppercase;padding:8px 10px 6px;}
+.nav-btn{
+  display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+  background:none;border:none;cursor:pointer;padding:9px 10px;border-radius:9px;
+  font-family:var(--font-body);font-size:13.5px;font-weight:500;color:var(--ink-soft);
+  transition:background .15s,color .15s;
+}
+.nav-btn .num{font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);width:16px;flex-shrink:0;}
+.nav-btn svg{width:16px;height:16px;flex-shrink:0;stroke:currentColor;}
+.nav-btn:hover{background:var(--bg);color:var(--ink);}
+.nav-btn.active{background:var(--accent-soft);color:var(--accent);}
+.nav-btn.active .num{color:var(--accent);}
+.sidebar-footer{margin-top:auto;padding:14px 10px 0;border-top:1px solid var(--border);font-size:11px;color:var(--ink-faint);line-height:1.5;}
+
+/* ---------- MAIN ---------- */
+.main{flex:1;min-width:0;display:flex;flex-direction:column;}
+.topbar{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:16px 28px;display:flex;align-items:center;gap:20px;
+}
+.logo-slot{
+  width:126px;height:42px;border:1.5px dashed #C9CCDA;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  font:600 9.5px var(--font-mono);letter-spacing:.06em;color:var(--ink-faint);
+  text-transform:uppercase;background:#FBFBFD;text-align:center;line-height:1.3;
+}
+.topbar-mid{flex:1;min-width:0;}
+.topbar-mid h1{font-family:var(--font-display);font-size:19px;margin:0 0 3px;font-weight:600;letter-spacing:-.01em;}
+.topbar-mid .meta{font-size:12px;color:var(--ink-soft);display:flex;gap:14px;flex-wrap:wrap;}
+.meta .pill{background:var(--bg);border:1px solid var(--border);border-radius:100px;padding:2px 10px;font-family:var(--font-mono);font-size:10.5px;color:var(--ink-soft);}
+
+.content{padding:26px 28px 60px;max-width:1180px;width:100%;margin:0 auto;}
+.page{display:none;animation:fade .25s ease;}
+.page.active{display:block;}
+@keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+
+.section-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;flex-wrap:wrap;gap:8px;}
+.section-head h2{font-family:var(--font-display);font-size:17px;margin:0;font-weight:600;}
+.source-note{font-size:11px;color:var(--ink-faint);font-family:var(--font-mono);}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;}
+.grid{display:grid;gap:16px;}
+.kpi-grid{grid-template-columns:repeat(5,1fr);margin-bottom:20px;}
+.kpi{padding:16px 18px;}
+.kpi .label{font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em;font-weight:600;margin-bottom:8px;}
+.kpi .value{font-family:var(--font-mono);font-size:26px;font-weight:600;color:var(--ink);}
+.kpi .delta{font-size:11.5px;font-weight:600;margin-top:6px;display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:100px;}
+.delta.up{color:var(--positive);background:var(--positive-soft);}
+.delta.down{color:var(--negative);background:var(--negative-soft);}
+.delta.flat{color:var(--ink-soft);background:var(--bg);}
+
+.two-col{grid-template-columns:1.4fr 1fr;margin-bottom:20px;}
+.chart-title{font-size:12.5px;font-weight:600;color:var(--ink-soft);margin:0 0 12px;text-transform:uppercase;letter-spacing:.04em;}
+.chart-wrap{position:relative;height:230px;}
+.chart-wrap.small{height:200px;}
+
+.callout{
+  display:flex;gap:12px;background:var(--accent-soft);border-left:3px solid var(--accent);
+  border-radius:0 10px 10px 0;padding:13px 16px;margin:18px 0;font-size:13px;color:#3A3560;line-height:1.55;
+}
+.callout b{color:var(--accent);}
+
+table.data-table{width:100%;border-collapse:collapse;font-size:13px;}
+table.data-table th{
+  text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-faint);
+  font-weight:600;padding:8px 12px;border-bottom:1px solid var(--border);white-space:nowrap;
+}
+table.data-table td{padding:11px 12px;border-bottom:1px solid #EEEFF5;color:var(--ink);vertical-align:middle;}
+table.data-table tr:last-child td{border-bottom:none;}
+.tag{font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:100px;background:var(--bg);color:var(--ink-soft);display:inline-block;}
+.engine-chip{font-size:10.5px;font-weight:600;padding:3px 8px;border-radius:6px;margin-right:4px;display:inline-block;margin-bottom:2px;}
+.eng-chatgpt{background:#EAF7EF;color:#1E9E64;}
+.eng-perplexity{background:var(--cyan-soft);color:var(--cyan);}
+.eng-gemini{background:#FFF3DE;color:#B9770E;}
+.eng-copilot{background:var(--accent-soft);color:var(--accent);}
+.trend{font-weight:700;}
+.trend.up{color:var(--positive);}
+.trend.down{color:var(--negative);}
+.trend.flat{color:var(--ink-faint);}
+.mono-num{font-family:var(--font-mono);}
+
+/* Recommendations */
+.rec-list{list-style:none;margin:0;padding:0;counter-reset:rec;}
+.rec-item{
+  display:flex;gap:14px;padding:16px 4px;border-bottom:1px solid var(--border);
+  counter-increment:rec;
+}
+.rec-item:last-child{border-bottom:none;}
+.rec-item .rnum{
+  font-family:var(--font-mono);font-size:12px;color:var(--accent);background:var(--accent-soft);
+  width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:700;
+}
+.rec-item h4{margin:0 0 4px;font-size:13.5px;font-weight:600;}
+.rec-item p{margin:0;font-size:12.5px;color:var(--ink-soft);line-height:1.5;}
+.impact{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 8px;border-radius:100px;margin-left:8px;}
+.impact.high{background:var(--negative-soft);color:var(--negative);}
+.impact.med{background:#FFF3DE;color:#B9770E;}
+
+/* Cover page */
+.cover-hero{
+  background:linear-gradient(180deg,#FBFAFF 0%,var(--surface) 60%);
+  border:1px solid var(--border);border-radius:20px;padding:44px 44px 30px;text-align:center;margin-bottom:20px;
+}
+.cover-hero .eyebrow{font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:14px;}
+.cover-hero h1{font-family:var(--font-display);font-size:34px;font-weight:700;margin:0 0 10px;letter-spacing:-.01em;}
+.cover-hero .sub{color:var(--ink-soft);font-size:14.5px;max-width:520px;margin:0 auto 26px;line-height:1.6;}
+.cover-logos{display:flex;justify-content:center;gap:22px;margin-bottom:10px;}
+.cover-meta-row{display:flex;justify-content:center;gap:28px;margin-top:22px;flex-wrap:wrap;}
+.cover-meta-row div{font-size:11.5px;color:var(--ink-soft);text-align:center;}
+.cover-meta-row .k{display:block;font-family:var(--font-mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:3px;}
+.constellation{display:block;margin:0 auto;}
+.cover-strip{grid-template-columns:repeat(4,1fr);}
+
+@media (max-width:880px){
+  .sidebar{width:64px;padding:16px 8px;}
+  .sidebar .brandmark span.txt, .nav-btn span.txt, .nav-label{display:none;}
+  .nav-btn{justify-content:center;}
+  .topbar{flex-wrap:wrap;}
+  .kpi-grid,.two-col,.cover-strip{grid-template-columns:repeat(2,1fr);}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ================= SIDEBAR ================= -->
+  <nav class="sidebar">
+    <div class="brandmark"><span class="dot"></span><span class="txt">GEO Report</span></div>
+    <div class="nav-label">Report pages</div>
+    <button class="nav-btn" data-page="cover" onclick="showPage('cover')">
+      <span class="num">01</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+      <span class="txt">Cover</span>
+    </button>
+    <button class="nav-btn" data-page="overview" onclick="showPage('overview')">
+      <span class="num">02</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="5" rx="1.5"/><rect x="13" y="10" width="8" height="11" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/></svg>
+      <span class="txt">GEO Overview</span>
+    </button>
+    <button class="nav-btn" data-page="prompts" onclick="showPage('prompts')">
+      <span class="num">03</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M21 11.5a8.4 8.4 0 0 1-8.4 8.4H4l1.9-3.8A8.4 8.4 0 1 1 21 11.5Z"/></svg>
+      <span class="txt">Prompts</span>
+    </button>
+    <button class="nav-btn" data-page="pages" onclick="showPage('pages')">
+      <span class="num">04</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M10 13a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M14 11a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/></svg>
+      <span class="txt">Pages Cited</span>
+    </button>
+    <button class="nav-btn" data-page="mentions" onclick="showPage('mentions')">
+      <span class="num">05</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M3 11v2a2 2 0 0 0 2 2h1l4 4v-4h8a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H8.5"/><path d="M3 11 8.5 7v8Z"/></svg>
+      <span class="txt">Mentions</span>
+    </button>
+    <button class="nav-btn" data-page="benchmark" onclick="showPage('benchmark')">
+      <span class="num">06</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M4 20V10M12 20V4M20 20v-7"/></svg>
+      <span class="txt">Benchmark</span>
+    </button>
+    <button class="nav-btn" data-page="recs" onclick="showPage('recs')">
+      <span class="num">07</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.5.4.8 1 .8 1.6v.5h5.4v-.5c0-.6.3-1.2.8-1.6A6 6 0 0 0 12 3Z"/></svg>
+      <span class="txt">Recommendations</span>
+    </button>
+    <div class="sidebar-footer">Connected sources:<br>Ahrefs Brand Radar · Bing Webmaster Tools</div>
+  </nav>
+
+  <!-- ================= MAIN ================= -->
+  <div class="main">
+    <div class="topbar">
+      <!-- Swap this box for: <img src="client-logo.png" style="max-height:34px"> -->
+      <div class="logo-slot" id="client-logo">CLIENT<br>LOGO</div>
+      <div class="topbar-mid">
+        <h1>Generative Engine Optimization — Monthly Report</h1>
+        <div class="meta">
+          <span class="pill">Client Co.</span>
+          <span class="pill">Jun 1 – Jun 30, 2026</span>
+          <span class="pill">Prepared by 2X Marketing</span>
+        </div>
+      </div>
+      <!-- Swap this box for: <img src="agency-logo.png" style="max-height:34px"> -->
+      <div class="logo-slot" id="agency-logo">2X<br>MARKETING</div>
+    </div>
+
+    <div class="content">
+
+      <!-- ============ PAGE 1: COVER ============ -->
+      <section class="page active" id="cover">
+        <div class="cover-hero">
+          <div class="eyebrow">GEO Performance Report</div>
+          <h1>How Client Co. shows up<br>across AI answer engines</h1>
+          <p class="sub">A monthly view of prompt visibility, page citations, and brand mentions across ChatGPT, Perplexity, Gemini and Copilot — sourced from Bing Webmaster Tools and Ahrefs Brand Radar.</p>
+          <svg class="constellation" width="560" height="230" viewBox="0 0 560 230">
+            <g stroke="#5B4FE0" stroke-opacity=".4" stroke-width="1.5">
+              <line x1="280" y1="115" x2="120" y2="55"/>
+              <line x1="280" y1="115" x2="120" y2="175"/>
+              <line x1="280" y1="115" x2="440" y2="55"/>
+              <line x1="280" y1="115" x2="440" y2="175"/>
+            </g>
+            <g stroke="#00AEC0" stroke-width="1.2" stroke-dasharray="3 4">
+              <line x1="120" y1="55" x2="55" y2="30"/><line x1="120" y1="55" x2="55" y2="70"/>
+              <line x1="120" y1="175" x2="55" y2="150"/><line x1="120" y1="175" x2="55" y2="195"/>
+              <line x1="440" y1="55" x2="505" y2="30"/><line x1="440" y1="55" x2="505" y2="70"/>
+              <line x1="440" y1="175" x2="505" y2="150"/><line x1="440" y1="175" x2="505" y2="195"/>
+            </g>
+            <g fill="#00AEC0">
+              <circle cx="55" cy="30" r="3.5"/><circle cx="55" cy="70" r="3.5"/>
+              <circle cx="55" cy="150" r="3.5"/><circle cx="55" cy="195" r="3.5"/>
+              <circle cx="505" cy="30" r="3.5"/><circle cx="505" cy="70" r="3.5"/>
+              <circle cx="505" cy="150" r="3.5"/><circle cx="505" cy="195" r="3.5"/>
+            </g>
+            <circle cx="280" cy="115" r="30" fill="#EEECFC" stroke="#5B4FE0" stroke-width="2"/>
+            <text x="280" y="120" text-anchor="middle" font-family="Space Grotesk" font-weight="700" font-size="11" fill="#5B4FE0">CLIENT</text>
+            <g font-family="IBM Plex Mono" font-size="10.5" fill="#666B7D">
+              <circle cx="120" cy="55" r="20" fill="#fff" stroke="#E4E6EE"/><text x="120" y="59" text-anchor="middle" font-weight="600" fill="#161925">GPT</text>
+              <circle cx="120" cy="175" r="20" fill="#fff" stroke="#E4E6EE"/><text x="120" y="179" text-anchor="middle" font-weight="600" font-size="9" fill="#161925">Perplex.</text>
+              <circle cx="440" cy="55" r="20" fill="#fff" stroke="#E4E6EE"/><text x="440" y="59" text-anchor="middle" font-weight="600" font-size="9" fill="#161925">Gemini</text>
+              <circle cx="440" cy="175" r="20" fill="#fff" stroke="#E4E6EE"/><text x="440" y="179" text-anchor="middle" font-weight="600" fill="#161925">Copil.</text>
+            </g>
+          </svg>
+        </div>
+        <div class="grid cover-strip">
+          <div class="card kpi"><div class="label">Prompts tracked</div><div class="value">86</div></div>
+          <div class="card kpi"><div class="label">AI citations</div><div class="value">312</div></div>
+          <div class="card kpi"><div class="label">Brand mentions</div><div class="value">214</div></div>
+          <div class="card kpi"><div class="label">Share of voice</div><div class="value">24%</div></div>
+        </div>
+      </section>
+
+      <!-- ============ PAGE 2: OVERVIEW ============ -->
+      <section class="page" id="overview">
+        <div class="section-head"><h2>GEO Overview</h2><span class="source-note">Source: Ahrefs Brand Radar + Bing Webmaster Tools</span></div>
+        <div class="grid kpi-grid">
+          <div class="card kpi"><div class="label">Prompts tracked</div><div class="value">86</div><span class="delta up">▲ 6 new</span></div>
+          <div class="card kpi"><div class="label">AI citations</div><div class="value">312</div><span class="delta up">▲ 18%</span></div>
+          <div class="card kpi"><div class="label">Brand mentions</div><div class="value">214</div><span class="delta up">▲ 9%</span></div>
+          <div class="card kpi"><div class="label">Share of voice</div><div class="value">24%</div><span class="delta up">▲ 3 pts</span></div>
+          <div class="card kpi"><div class="label">Avg. citation rank</div><div class="value">2.3</div><span class="delta up">▲ from 2.8</span></div>
+        </div>
+        <div class="grid two-col">
+          <div class="card">
+            <p class="chart-title">Citations over time</p>
+            <div class="chart-wrap"><canvas id="chartCitTrend"></canvas></div>
+          </div>
+          <div class="card">
+            <p class="chart-title">Citation share by engine</p>
+            <div class="chart-wrap"><canvas id="chartEngineDonut"></canvas></div>
+          </div>
+        </div>
+        <div class="callout"><span>💡</span><div><b>Reading this month:</b> Citations grew 18% MoM, driven mainly by ChatGPT surfacing the comparison guide for "best project management software" prompts. Copilot share is smallest — an opportunity, since it draws on Bing's index directly.</div></div>
+      </section>
+
+      <!-- ============ PAGE 3: PROMPTS ============ -->
+      <section class="page" id="prompts">
+        <div class="section-head"><h2>Prompt Performance</h2><span class="source-note">86 prompts tracked · updated weekly</span></div>
+        <div class="card" style="margin-bottom:18px;">
+          <p class="chart-title">Top prompts by citation frequency</p>
+          <div class="chart-wrap small"><canvas id="chartPromptsBar"></canvas></div>
+        </div>
+        <div class="card">
+          <table class="data-table">
+            <thead><tr><th>Prompt</th><th>Category</th><th>Volume</th><th>Cited by</th><th>Avg. rank</th><th>Trend</th></tr></thead>
+            <tbody>
+              <tr><td>"best project management software for remote teams"</td><td><span class="tag">Comparison</span></td><td class="mono-num">880</td><td><span class="engine-chip eng-chatgpt">ChatGPT</span><span class="engine-chip eng-perplexity">Perplexity</span></td><td class="mono-num">2.0</td><td class="trend up">▲</td></tr>
+              <tr><td>"top CRM alternatives to Salesforce"</td><td><span class="tag">Competitive</span></td><td class="mono-num">720</td><td><span class="engine-chip eng-perplexity">Perplexity</span><span class="engine-chip eng-gemini">Gemini</span></td><td class="mono-num">3.0</td><td class="trend up">▲</td></tr>
+              <tr><td>"how to manage remote team tasks"</td><td><span class="tag">How-to</span></td><td class="mono-num">1,200</td><td><span class="engine-chip eng-chatgpt">ChatGPT</span><span class="engine-chip eng-copilot">Copilot</span></td><td class="mono-num">1.0</td><td class="trend up">▲</td></tr>
+              <tr><td>"is Client Co. good for small business"</td><td><span class="tag">Branded</span></td><td class="mono-num">310</td><td><span class="engine-chip eng-chatgpt">ChatGPT</span></td><td class="mono-num">1.0</td><td class="trend flat">▬</td></tr>
+              <tr><td>"project management tools with AI features"</td><td><span class="tag">Feature</span></td><td class="mono-num">590</td><td><span class="engine-chip eng-perplexity">Perplexity</span><span class="engine-chip eng-gemini">Gemini</span><span class="engine-chip eng-copilot">Copilot</span></td><td class="mono-num">2.0</td><td class="trend up">▲</td></tr>
+              <tr><td>"affordable alternatives to Asana"</td><td><span class="tag">Competitive</span></td><td class="mono-num">460</td><td><span class="engine-chip eng-chatgpt">ChatGPT</span></td><td class="mono-num">4.0</td><td class="trend down">▼</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ============ PAGE 4: PAGES CITED ============ -->
+      <section class="page" id="pages">
+        <div class="section-head"><h2>Pages Cited by AI Engines</h2><span class="source-note">Source: Ahrefs Brand Radar URL-level citations</span></div>
+        <div class="card" style="margin-bottom:18px;">
+          <p class="chart-title">Most-cited pages this month</p>
+          <div class="chart-wrap small"><canvas id="chartPagesBar"></canvas></div>
+        </div>
+        <div class="card">
+          <table class="data-table">
+            <thead><tr><th>Page</th><th>Cluster</th><th>Citations</th><th>Engines</th></tr></thead>
+            <tbody>
+              <tr><td>/blog/best-project-management-software-2026</td><td><span class="tag">Comparison</span></td><td class="mono-num">42</td><td><span class="engine-chip eng-chatgpt">ChatGPT</span><span class="engine-chip eng-perplexity">Perplexity</span><span class="engine-chip eng-gemini">Gemini</span></td></tr>
+              <tr><td>/compare/clientco-vs-asana</td><td><span class="tag">Competitive</span></td><td class="mono-num">31</td><td><span class="engine-chip eng-chatgpt">ChatGPT</span><span class="engine-chip eng-copilot">Copilot</span></td></tr>
+              <tr><td>/features/ai-task-automation</td><td><span class="tag">Feature</span></td><td class="mono-num">27</td><td><span class="engine-chip eng-perplexity">Perplexity</span><span class="engine-chip eng-gemini">Gemini</span></td></tr>
+              <tr><td>/guides/remote-team-management</td><td><span class="tag">How-to</span></td><td class="mono-num">24</td><td><span class="engine-chip eng-chatgpt">ChatGPT</span><span class="engine-chip eng-copilot">Copilot</span></td></tr>
+              <tr><td>/pricing</td><td><span class="tag">Branded</span></td><td class="mono-num">18</td><td><span class="engine-chip eng-chatgpt">ChatGPT</span></td></tr>
+              <tr><td>/blog/small-business-pm-tools</td><td><span class="tag">Comparison</span></td><td class="mono-num">15</td><td><span class="engine-chip eng-perplexity">Perplexity</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout"><span>💡</span><div><b>Reading this month:</b> The 2026 comparison guide alone drives 13% of all citations. Refreshing it quarterly and adding a structured comparison table should protect this position as competitors publish similar content.</div></div>
+      </section>
+
+      <!-- ============ PAGE 5: MENTIONS ============ -->
+      <section class="page" id="mentions">
+        <div class="section-head"><h2>Brand Mentions</h2><span class="source-note">Includes unlinked mentions across AI answers</span></div>
+        <div class="grid two-col">
+          <div class="card">
+            <p class="chart-title">Mentions over time</p>
+            <div class="chart-wrap"><canvas id="chartMentionsLine"></canvas></div>
+          </div>
+          <div class="card">
+            <p class="chart-title">Sentiment breakdown</p>
+            <div class="chart-wrap"><canvas id="chartSentiment"></canvas></div>
+          </div>
+        </div>
+        <div class="callout"><span>💡</span><div><b>Reading this month:</b> 72% of mentions carry positive framing, usually tied to ease-of-use language. Negative mentions (4%) cluster around pricing comparisons to Trello — worth a dedicated pricing FAQ page.</div></div>
+      </section>
+
+      <!-- ============ PAGE 6: BENCHMARK ============ -->
+      <section class="page" id="benchmark">
+        <div class="section-head"><h2>Competitive Benchmark</h2><span class="source-note">Share of voice across tracked prompt set</span></div>
+        <div class="card">
+          <p class="chart-title">Share of voice by brand</p>
+          <div class="chart-wrap"><canvas id="chartBenchmark"></canvas></div>
+        </div>
+        <div class="callout"><span>💡</span><div><b>Reading this month:</b> Client Co. holds 24% share of voice, behind Asana (34%) but ahead of Monday.com and ClickUp. The gap to Asana is concentrated in "vs" competitive prompts, flagged as a priority in the recommendations.</div></div>
+      </section>
+
+      <!-- ============ PAGE 7: RECOMMENDATIONS ============ -->
+      <section class="page" id="recs">
+        <div class="section-head"><h2>Recommendations &amp; Next Steps</h2><span class="source-note">Prioritized for next reporting cycle</span></div>
+        <div class="card">
+          <ol class="rec-list">
+            <li class="rec-item"><span class="rnum">1</span><div><h4>Close the "vs Asana" citation gap <span class="impact high">High impact</span></h4><p>Publish a dedicated, structured comparison page targeting competitive prompts where citation share is currently below 20%.</p></div></li>
+            <li class="rec-item"><span class="rnum">2</span><div><h4>Add FAQ schema to feature pages <span class="impact high">High impact</span></h4><p>Structured Q&A markup improves eligibility for AI Overview and Copilot citation on feature and pricing pages.</p></div></li>
+            <li class="rec-item"><span class="rnum">3</span><div><h4>Grow branded, no-click mentions <span class="impact med">Medium impact</span></h4><p>Pursue PR and third-party coverage to lift unlinked brand mentions, which currently trail linked citations 214 to 312.</p></div></li>
+            <li class="rec-item"><span class="rnum">4</span><div><h4>Monitor Copilot via Bing Webmaster Tools <span class="impact med">Medium impact</span></h4><p>Copilot has the smallest citation share of the four engines — track monthly URL inspection data to catch indexing issues early.</p></div></li>
+            <li class="rec-item"><span class="rnum">5</span><div><h4>Refresh the top-cited comparison guide quarterly <span class="impact med">Medium impact</span></h4><p>This single page drives 13% of all citations; a content refresh cadence protects that position as competitors publish similar guides.</p></div></li>
+          </ol>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const charts = {};
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelector(`.nav-btn[data-page="${id}"]`).classList.add('active');
+  initCharts(id);
+}
+
+function baseOpts(extra){
+  return Object.assign({
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{labels:{font:{family:'Inter',size:11},color:'#666B7D'}}},
+    scales:{
+      x:{grid:{display:false},ticks:{font:{family:'IBM Plex Mono',size:10},color:'#9BA0B0'}},
+      y:{grid:{color:'#EEEFF5'},ticks:{font:{family:'IBM Plex Mono',size:10},color:'#9BA0B0'}}
+    }
+  }, extra||{});
+}
+
+function initCharts(id){
+  if(id==='overview' && !charts.citTrend){
+    charts.citTrend = new Chart(document.getElementById('chartCitTrend'),{
+      type:'line',
+      data:{labels:['Jan','Feb','Mar','Apr','May','Jun'],
+        datasets:[{label:'Citations',data:[142,168,190,225,264,312],borderColor:'#5B4FE0',backgroundColor:'rgba(91,79,224,.08)',tension:.35,fill:true,pointRadius:3}]},
+      options:baseOpts()
+    });
+    charts.engineDonut = new Chart(document.getElementById('chartEngineDonut'),{
+      type:'doughnut',
+      data:{labels:['ChatGPT','Perplexity','Google AI Overview','Copilot'],
+        datasets:[{data:[38,27,19,16],backgroundColor:['#1E9E64','#00AEC0','#B9770E','#5B4FE0'],borderWidth:0}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{family:'Inter',size:11},color:'#666B7D',boxWidth:10}}}}
+    });
+  }
+  if(id==='prompts' && !charts.promptsBar){
+    charts.promptsBar = new Chart(document.getElementById('chartPromptsBar'),{
+      type:'bar',
+      data:{labels:['remote PM software','manage remote tasks','AI PM features','CRM vs Salesforce','alt. to Asana','Client Co. review'],
+        datasets:[{label:'Citations',data:[58,51,44,37,29,22],backgroundColor:'#5B4FE0',borderRadius:6,maxBarThickness:34}]},
+      options:baseOpts({plugins:{legend:{display:false}}})
+    });
+  }
+  if(id==='pages' && !charts.pagesBar){
+    charts.pagesBar = new Chart(document.getElementById('chartPagesBar'),{
+      type:'bar',
+      data:{labels:['/best-pm-software-2026','/clientco-vs-asana','/ai-task-automation','/remote-team-mgmt','/pricing','/small-business-pm'],
+        datasets:[{label:'Citations',data:[42,31,27,24,18,15],backgroundColor:'#00AEC0',borderRadius:6,maxBarThickness:34}]},
+      options:baseOpts({plugins:{legend:{display:false}},indexAxis:'y'})
+    });
+  }
+  if(id==='mentions' && !charts.mentionsLine){
+    charts.mentionsLine = new Chart(document.getElementById('chartMentionsLine'),{
+      type:'line',
+      data:{labels:['Jan','Feb','Mar','Apr','May','Jun'],
+        datasets:[{label:'Mentions',data:[110,128,145,171,196,214],borderColor:'#1E9E64',backgroundColor:'rgba(30,158,100,.08)',tension:.35,fill:true,pointRadius:3}]},
+      options:baseOpts()
+    });
+    charts.sentiment = new Chart(document.getElementById('chartSentiment'),{
+      type:'doughnut',
+      data:{labels:['Positive','Neutral','Negative'],
+        datasets:[{data:[72,24,4],backgroundColor:['#1E9E64','#C9CCDA','#D8483D'],borderWidth:0}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{family:'Inter',size:11},color:'#666B7D',boxWidth:10}}}}
+    });
+  }
+  if(id==='benchmark' && !charts.benchmarkBar){
+    charts.benchmarkBar = new Chart(document.getElementById('chartBenchmark'),{
+      type:'bar',
+      data:{labels:['Client Co.','Asana','Monday.com','ClickUp'],
+        datasets:[{label:'Share of voice',data:[24,34,22,20],backgroundColor:['#5B4FE0','#C9CCDA','#C9CCDA','#C9CCDA'],borderRadius:6,maxBarThickness:56}]},
+      options:baseOpts({plugins:{legend:{display:false}}})
+    });
+  }
+}
+
+showPage('cover');
+</script>
+</body>
+</html>
